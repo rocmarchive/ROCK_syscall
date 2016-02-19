@@ -30,8 +30,10 @@
 #include <linux/uaccess.h>
 #include <linux/compat.h>
 #include <uapi/linux/kfd_ioctl.h>
+#include <uapi/linux/kfd_sc.h>
 #include <linux/time.h>
 #include <linux/mm.h>
+#include <linux/vmalloc.h>
 #include <uapi/asm-generic/mman-common.h>
 #include <asm/processor.h>
 #include <linux/ptrace.h>
@@ -454,6 +456,55 @@ static int kfd_ioctl_set_cu_mask(struct file *filp, struct kfd_process *p,
 	up_write(&p->lock);
 
 	return retval;
+}
+
+static int kfd_ioctl_set_syscall_area(struct file *filp,
+					struct kfd_process *p, void *data)
+{
+	int ret, num_pages, i;
+	struct page ** pages;
+	struct kfd_ioctl_set_syscall_area_args *args = data;
+	if (!p)
+		return -EINVAL;
+
+	num_pages = (args->sc_elements * sizeof(struct kfd_sc)) / PAGE_SIZE;
+	pages = kcalloc(num_pages, sizeof(struct page *), GFP_KERNEL);
+	if (!pages) {
+		pr_err("KFD_SC: Failed to allocate page array for %d pages\n",
+			num_pages);
+		return -ENOMEM;
+	}
+
+	ret = get_user_pages_fast(args->sc_area_address, num_pages, 1, pages);
+	if (ret != num_pages) {
+		pr_err("KFD_SC: Failed to pin %d user pages: %d\n",
+			num_pages, ret);
+		goto unpin;
+	}
+
+	p->sc_kloc = vmap(pages, num_pages, VM_MAP, PAGE_KERNEL);
+	if (!p->sc_kloc) {
+		pr_err("KFD_SC: Failed to map sc area pages\n");
+		ret = -ENOMEM;
+		goto unpin;
+	} else
+		ret = 0;
+
+	// FIXME: for some reason we get unhandled dereference in kernel
+	// if we don't do this
+	memset(p->sc_kloc, 0, num_pages * PAGE_SIZE);
+
+	p->sc_location = (__user struct kfd_sc *)args->sc_area_address;
+	p->sc_elements = args->sc_elements;
+	pr_debug("KFD_SC: process setup SC area: %p (%lu), kloc: %p-%p(%u pages)\n",
+		p->sc_location, p->sc_elements, p->sc_kloc,
+		p->sc_kloc + p->sc_elements, num_pages);
+unpin:
+	for (i = 0; ret && i < num_pages; ++i)
+		if (pages[i])
+			put_page(pages[i]);
+	kfree(pages);
+	return ret;
 }
 
 static int kfd_ioctl_set_memory_policy(struct file *filep,
@@ -2061,8 +2112,10 @@ static const struct amdkfd_ioctl_desc amdkfd_ioctls[] = {
 				kfd_ioctl_cross_memory_copy, 0),
 
 	AMDKFD_IOCTL_DEF(AMDKFD_IOC_GET_QUEUE_WAVE_STATE,
-				kfd_ioctl_get_queue_wave_state, 0)
+				kfd_ioctl_get_queue_wave_state, 0),
 
+	AMDKFD_IOCTL_DEF(AMDKFD_IOC_SET_SYSCALL_AREA,
+	                        kfd_ioctl_set_syscall_area, 0)
 };
 
 #define AMDKFD_CORE_IOCTL_COUNT	ARRAY_SIZE(amdkfd_ioctls)

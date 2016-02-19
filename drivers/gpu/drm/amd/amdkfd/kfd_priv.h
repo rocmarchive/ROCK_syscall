@@ -766,6 +766,10 @@ struct kfd_process {
 	 * restored after an eviction
 	 */
 	unsigned long last_restore_timestamp;
+
+	__user struct kfd_sc *sc_location;
+	size_t sc_elements;
+	struct kfd_sc *sc_kloc;
 };
 
 /**
