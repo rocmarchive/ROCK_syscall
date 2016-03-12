@@ -1086,8 +1086,8 @@ int kfd_wait_on_events(struct kfd_process *p,
 		       uint32_t num_events, void __user *data,
 		       bool all, uint32_t user_timeout_ms,
 		       enum kfd_event_wait_result *wait_result);
-void kfd_signal_event_interrupt(unsigned int pasid, uint32_t partial_id,
-		uint32_t valid_id_bits);
+//void kfd_signal_event_interrupt(unsigned int pasid, uint32_t partial_id,
+//		uint32_t valid_id_bits);
 #if defined(CONFIG_AMD_IOMMU_V2_MODULE) || defined(CONFIG_AMD_IOMMU_V2)
 void kfd_signal_iommu_event(struct kfd_dev *dev,
 		unsigned int pasid, unsigned long address,
@@ -1140,5 +1140,7 @@ static inline void kfd_debugfs_init(void) {}
 static inline void kfd_debugfs_fini(void) {}
 
 #endif
+/* System calls */
+int kfd_syscall(struct kfd_process *p, unsigned wf_id);
 
 #endif

@@ -78,6 +78,6 @@ struct kfd_event {
 #define KFD_EVENT_TYPE_MEMORY 8
 
 extern void kfd_signal_event_interrupt(unsigned int pasid, uint32_t partial_id,
-					uint32_t valid_id_bits);
+					uint32_t valid_id_bits, uint32_t data);
 
 #endif

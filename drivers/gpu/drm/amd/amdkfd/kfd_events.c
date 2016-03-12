@@ -160,6 +160,10 @@ static bool allocate_signal_page(struct file *devkfd, struct kfd_process *p)
 		page->free_slots--;
 	}
 
+	/* Take slot 0 for syscalls */
+	__set_bit(0, page->used_slot_bitmap);
+	page->free_slots--;
+
 	if (list_empty(&p->signal_event_pages))
 		page->page_index = 0;
 	else
@@ -685,7 +689,7 @@ static void set_event_from_interrupt(struct kfd_process *p,
 }
 
 void kfd_signal_event_interrupt(unsigned int pasid, uint32_t partial_id,
-				uint32_t valid_id_bits)
+				uint32_t valid_id_bits, uint32_t data)
 {
 	struct kfd_event *ev;
 
@@ -698,6 +702,17 @@ void kfd_signal_event_interrupt(unsigned int pasid, uint32_t partial_id,
 	if (!p)
 		return; /* Presumably process exited. */
 
+	if ((valid_id_bits >= INTERRUPT_DATA_BITS) && (partial_id == 0)) {
+		// Use p->lock to track syscall activity
+		// TODO remove this
+		down_read(&p->lock);
+		kfd_syscall(p, data);
+		up_read(&p->lock);
+		// Release the reference taken by lookup_process_pasid
+		kfd_unref_process(p);
+		return;
+	}
+
 	mutex_lock(&p->event_mutex);
 
 	if ((valid_id_bits >= INTERRUPT_DATA_BITS) &&
@@ -706,6 +721,7 @@ void kfd_signal_event_interrupt(unsigned int pasid, uint32_t partial_id,
 		/* Partial ID is a full ID. */
 		ev = lookup_event_by_id(p, partial_id);
 		set_event_from_interrupt(p, ev);
+
 	} else {
 		/* Partial ID is in fact partial. For now we completely ignore
 		 * it, but we could use any bits we did receive to search
