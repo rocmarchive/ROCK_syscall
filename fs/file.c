@@ -742,9 +742,9 @@ EXPORT_SYMBOL(fget_raw);
  * The fput_needed flag returned by fget_light should be passed to the
  * corresponding fput_light.
  */
-static unsigned long __fget_light(unsigned int fd, fmode_t mask)
+static unsigned long __fget_light(unsigned int fd, fmode_t mask, struct task_struct *t)
 {
-	struct files_struct *files = current->files;
+	struct files_struct *files = t->files;
 	struct file *file;
 
 	if (atomic_read(&files->count) == 1) {
@@ -753,7 +753,7 @@ static unsigned long __fget_light(unsigned int fd, fmode_t mask)
 			return 0;
 		return (unsigned long)file;
 	} else {
-		file = __fget(fd, mask, current);
+		file = __fget(fd, mask, t);
 		if (!file)
 			return 0;
 		return FDPUT_FPUT | (unsigned long)file;
@@ -761,13 +761,13 @@ static unsigned long __fget_light(unsigned int fd, fmode_t mask)
 }
 unsigned long __fdget(unsigned int fd)
 {
-	return __fget_light(fd, FMODE_PATH);
+	return __fget_light(fd, FMODE_PATH, current);
 }
 EXPORT_SYMBOL(__fdget);
 
 unsigned long __fdget_raw(unsigned int fd)
 {
-	return __fget_light(fd, 0);
+	return __fget_light(fd, 0, current);
 }
 
 unsigned long __fdget_pos(unsigned int fd)
