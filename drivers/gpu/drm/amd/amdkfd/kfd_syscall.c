@@ -21,17 +21,56 @@
  */
 
 #include <linux/atomic.h>
+#include <linux/file.h>
+#include <linux/fsnotify.h>
 #include <linux/highmem.h>
 #include <linux/kfd_sc.h>
 #include <linux/mm.h>
+#include <linux/mmu_context.h>
 #include <linux/pagemap.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
 
 #include <asm/errno.h>
+#include <asm/unistd.h>
 
 #include "kfd_priv.h"
 
-static void kfd_sc_process(struct kfd_sc *s)
+/* TODO: These are almost exact copies of functions in  fs/read_write.c.
+ * Export and reuse those functions instead. */
+static struct fd fdget_pos_task(unsigned int fd, struct task_struct *task)
+{
+	return __to_fd(__fdget_pos_task(fd, task));
+}
+
+static void fdput_pos_task(struct fd f)
+{
+	if (f.flags & FDPUT_POS_UNLOCK)
+		mutex_unlock(&f.file->f_pos_lock);
+	fdput(f);
+}
+
+/* Mostly a copy of sys_write. */
+static ssize_t gpu_sc_write(struct kfd_process *p, unsigned int fd,
+                            unsigned long ptr, size_t count)
+{
+	struct fd f = fdget_pos_task(fd, p->lead_thread);
+	ssize_t ret = -EBADF;
+
+	if (f.file) {
+		// file_pos_read
+		loff_t pos = f.file->f_pos;
+		ret = vfs_write(p->lead_thread, f.file, (char *)ptr, count, &pos);
+		if (ret >= 0)
+			f.file->f_pos = pos; // file_pos_write(f.file, pos);
+		fdput_pos_task(f);
+	}
+
+	return ret;
+}
+
+static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
+                           bool *usemm)
 {
 	u32 sc_num;
 	int ret = 0;
@@ -54,6 +93,13 @@ static void kfd_sc_process(struct kfd_sc *s)
 	case __NR_restart_syscall: /* hijack __NR_restart_syscall as nop syscall */
 		ret = 0;
 		break;
+	case __NR_write:
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = gpu_sc_write(p, s->arg[0], s->arg[1], s->arg[2]);
+		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
 		       "%x:%x:%llx:%llx:%llx:%llx:%llx:%llx\n",
@@ -68,6 +114,7 @@ static void kfd_sc_process(struct kfd_sc *s)
 #define WAVESIZE 64
 int kfd_syscall(struct kfd_process *p, unsigned data)
 {
+	bool usemm = false;
 	unsigned start, to_scan, i, handled;
 	unsigned wf_id = ( ((data >> 18) & 0x3f) | ((data >> 1) & 0x40) | ((data >> 17) & 0x180) ) * 10 + ((data >> 14) & 0xf);
 
@@ -92,13 +139,14 @@ int kfd_syscall(struct kfd_process *p, unsigned data)
 	handled = 0;
 	pr_debug("KFD_SC: scanning from: %d(%d-%p)\n", wf_id, start,
 		p->sc_kloc + start);
+
 retry:
 	BUG_ON(start + to_scan > p->sc_elements);
 	for (i = start; i < (start + to_scan); ++i) {
 		if (p->sc_kloc[i].status == KFD_SC_STATUS_READY) {
 			if (to_scan != WAVESIZE)
 				pr_info("KFD_SC: Found request at %d\n", i);
-			kfd_sc_process(p, &(p->sc_kloc[i]));
+			kfd_sc_process(p, &(p->sc_kloc[i]), &usemm);
 			++handled;
 		}
 	}
@@ -116,6 +164,8 @@ retry:
 		       " %u elements. The GPU will hang.\n", to_scan);
 		return -EIO;
 	}
+	if (usemm)
+		unuse_mm(p->mm);
 	pr_debug("KFD_SC: Handled %u syscall requests in %u\n",
 		handled, to_scan);
 
