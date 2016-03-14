@@ -9,6 +9,7 @@
 #include <linux/types.h>
 #include <linux/posix_types.h>
 
+struct task_struct;
 struct file;
 
 extern void fput(struct file *);
@@ -44,6 +45,7 @@ extern struct file *fget_raw(unsigned int fd);
 extern unsigned long __fdget(unsigned int fd);
 extern unsigned long __fdget_raw(unsigned int fd);
 extern unsigned long __fdget_pos(unsigned int fd);
+extern unsigned long __fdget_pos_task(unsigned int fd, struct task_struct *t);
 extern void __f_unlock_pos(struct file *);
 
 static inline struct fd __to_fd(unsigned long v)

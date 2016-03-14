@@ -765,6 +765,11 @@ unsigned long __fdget(unsigned int fd)
 }
 EXPORT_SYMBOL(__fdget);
 
+unsigned long __fdget_task(unsigned int fd, struct task_struct *t)
+{
+	return __fget_light(fd, FMODE_PATH, t);
+}
+
 unsigned long __fdget_raw(unsigned int fd)
 {
 	return __fget_light(fd, 0, current);
@@ -772,7 +777,12 @@ unsigned long __fdget_raw(unsigned int fd)
 
 unsigned long __fdget_pos(unsigned int fd)
 {
-	unsigned long v = __fdget(fd);
+	return __fdget_pos_task(fd, current);
+}
+
+unsigned long __fdget_pos_task(unsigned int fd, struct task_struct *t)
+{
+	unsigned long v = __fdget_task(fd, t);
 	struct file *file = (struct file *)(v & ~3);
 
 	if (file && (file->f_mode & FMODE_ATOMIC_POS)) {
@@ -783,6 +793,7 @@ unsigned long __fdget_pos(unsigned int fd)
 	}
 	return v;
 }
+EXPORT_SYMBOL(__fdget_pos_task);
 
 void __f_unlock_pos(struct file *f)
 {
