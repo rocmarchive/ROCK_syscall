@@ -31,7 +31,8 @@
 #define KFD_SC_STATUS_BUSY	0x3
 #define KFD_SC_STATUS_FINISHED  0x4
 
-#define KFD_SC_NONBLOCK_FLAG	(1 << 31)
+/* Mark slot free when done, caller is not interested in return value */
+#define KFD_SC_NORET_FLAG	(1u << 31)
 
 struct kfd_sc {
 	uint32_t status;

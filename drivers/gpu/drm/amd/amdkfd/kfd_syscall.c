@@ -35,6 +35,7 @@ static void kfd_sc_process(struct kfd_sc *s)
 {
 	u32 sc_num;
 	int ret = 0;
+	bool noret;
 
 	//TODO: verify that this si legal to do.
 	atomic_t *status = (atomic_t*)&s->status;
@@ -46,7 +47,9 @@ static void kfd_sc_process(struct kfd_sc *s)
 
 	pr_debug("KFD_SC: padding: 0x%llx:0x%llx\n",
 		s->padding >> 32, s->padding & 0xffffffff);
-	sc_num = s->sc_num & ~KFD_SC_NONBLOCK_FLAG;
+
+	sc_num = s->sc_num & ~KFD_SC_NORET_FLAG;
+	noret = (s->sc_num & KFD_SC_NORET_FLAG) != 0;
 	switch (sc_num) {
 	case __NR_restart_syscall: /* hijack __NR_restart_syscall as nop syscall */
 		ret = 0;
@@ -59,7 +62,7 @@ static void kfd_sc_process(struct kfd_sc *s)
 		ret = -ENOSYS;
 	}
 	s->arg[0] = ret;
-	atomic_set(status, KFD_SC_STATUS_FINISHED);
+	atomic_set(status, noret ? KFD_SC_STATUS_FREE : KFD_SC_STATUS_FINISHED);
 }
 
 #define WAVESIZE 64
