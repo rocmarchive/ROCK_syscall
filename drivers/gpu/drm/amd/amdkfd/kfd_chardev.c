@@ -507,6 +507,42 @@ unpin:
 	return ret;
 }
 
+static int kfd_ioctl_free_syscall_area(struct file *filp,
+					struct kfd_process *p, void *data)
+{
+	void * addr;
+	size_t size;
+	struct kfd_ioctl_free_syscall_area_args *args = data;
+	if (!p)
+		return -EINVAL;
+	args->sc_area_address = (uint64_t)p->sc_location;
+	args->sc_elements = p->sc_elements;
+
+	/* Wait for all interrupts to complete otherwise we risk
+	 * faults in the handler */
+
+	size = (p->sc_elements * sizeof(struct kfd_sc));
+
+	/* Handlers need read lock. Make sure we don't remove the area from
+	 * underneath them */
+	down_write(&p->lock);
+	for (addr = p->sc_kloc; addr < ((void*)p->sc_kloc + size); addr += PAGE_SIZE) {
+		struct page * p = vmalloc_to_page(addr);
+		BUG_ON(!p);
+		put_page(p);
+	}
+	vunmap(p->sc_kloc);
+
+	pr_debug("KFD_SC: process freed SC area: %p (%lu)\n", p->sc_location,
+	         p->sc_elements);
+
+	p->sc_location = NULL;
+	p->sc_elements = 0;
+	p->sc_kloc = NULL;
+	up_write(&p->lock);
+	return 0;
+}
+
 static int kfd_ioctl_set_memory_policy(struct file *filep,
 					struct kfd_process *p, void *data)
 {
@@ -2115,7 +2151,10 @@ static const struct amdkfd_ioctl_desc amdkfd_ioctls[] = {
 				kfd_ioctl_get_queue_wave_state, 0),
 
 	AMDKFD_IOCTL_DEF(AMDKFD_IOC_SET_SYSCALL_AREA,
-	                        kfd_ioctl_set_syscall_area, 0)
+	                        kfd_ioctl_set_syscall_area, 0),
+
+	AMDKFD_IOCTL_DEF(AMDKFD_IOC_FREE_SYSCALL_AREA,
+	                        kfd_ioctl_free_syscall_area, 0)
 };
 
 #define AMDKFD_CORE_IOCTL_COUNT	ARRAY_SIZE(amdkfd_ioctls)
