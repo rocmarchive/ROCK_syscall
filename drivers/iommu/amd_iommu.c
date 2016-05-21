@@ -2902,6 +2902,7 @@ static void protection_domain_free(struct protection_domain *domain)
 
 	del_domain_from_list(domain);
 
+	mutex_destroy(&domain->api_lock);
 	if (domain->id)
 		domain_id_free(domain->id);
 
