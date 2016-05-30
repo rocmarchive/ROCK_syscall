@@ -505,6 +505,7 @@ static void shutdown_signal_pages(struct kfd_process *p)
 			free_pages((unsigned long)page->kernel_address,
 					get_order(KFD_SIGNAL_EVENT_LIMIT * 8));
 		}
+		list_del(&page->event_pages);
 		kfree(page);
 	}
 }
