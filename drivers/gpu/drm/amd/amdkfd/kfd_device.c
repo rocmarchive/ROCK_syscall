@@ -703,11 +703,9 @@ void kgd2kfd_interrupt(struct kfd_dev *kfd, const void *ih_ring_entry)
 
 	spin_lock(&kfd->interrupt_lock);
 
-	if (kfd->interrupts_active && interrupt_is_wanted(kfd, ih_ring_entry,
-						patched_ihre, &is_patched)
-	    && enqueue_ih_ring_entry(kfd,
-				is_patched ? patched_ihre : ih_ring_entry))
-		queue_work(kfd->ih_wq, &kfd->interrupt_work);
+	if (kfd->interrupts_active
+	    && interrupt_is_wanted(kfd, ih_ring_entry, patched_ihre, &is_patched))
+		enqueue_ih_ring_entry(kfd, is_patched ? patched_ihre : ih_ring_entry);
 
 	spin_unlock(&kfd->interrupt_lock);
 }

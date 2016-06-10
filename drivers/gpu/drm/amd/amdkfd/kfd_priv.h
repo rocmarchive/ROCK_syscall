@@ -223,6 +223,9 @@ struct kfd_vmid_info {
 	uint32_t vmid_num_kfd;
 };
 
+//TODO: this can be dynamic
+#define KFD_INTERRUPT_RING_SIZE 1024
+
 struct kfd_dev {
 	struct kgd_dev *kgd;
 
@@ -268,9 +271,6 @@ struct kfd_dev {
 	bool init_complete;
 
 	/* Interrupts */
-	struct kfifo ih_fifo;
-	struct workqueue_struct *ih_wq;
-	struct work_struct interrupt_work;
 	spinlock_t interrupt_lock;
 
 	/*

@@ -45,28 +45,30 @@
 #include <linux/kfifo.h>
 #include "kfd_priv.h"
 
-#define KFD_IH_NUM_ENTRIES 8192
-
 static void interrupt_wq(struct work_struct *);
+
+struct ih_work {
+	struct work_struct interrupt_work;
+	struct kfd_dev *kfd;
+	char data[];
+};
+
+static void ih_work_init(struct ih_work *w, struct kfd_dev *kfd,
+			const void *data)
+{
+	INIT_WORK(&w->interrupt_work, interrupt_wq);
+	w->kfd = kfd;
+	memcpy(w->data, data, kfd->device_info->ih_ring_entry_size);
+}
+
+static size_t ih_work_size(struct kfd_dev *kfd)
+{
+	return sizeof(struct ih_work) + kfd->device_info->ih_ring_entry_size;
+}
 
 int kfd_interrupt_init(struct kfd_dev *kfd)
 {
-	int r;
-
-	r = kfifo_alloc(&kfd->ih_fifo,
-			KFD_IH_NUM_ENTRIES *
-			kfd->device_info->ih_ring_entry_size,
-			GFP_KERNEL);
-	if (r) {
-		dev_err(kfd_chardev(), "Failed to allocate IH fifo\n");
-		return r;
-	}
-
-	kfd->ih_wq = alloc_workqueue("KFD IH", WQ_HIGHPRI, 1);
 	spin_lock_init(&kfd->interrupt_lock);
-
-	INIT_WORK(&kfd->interrupt_work, interrupt_wq);
-
 	kfd->interrupts_active = true;
 
 	/*
@@ -97,57 +99,45 @@ void kfd_interrupt_exit(struct kfd_dev *kfd)
 	 * work-queue items that will access interrupt_ring. New work items
 	 * can't be created because we stopped interrupt handling above.
 	 */
-	flush_workqueue(kfd->ih_wq);
-
-	kfifo_free(&kfd->ih_fifo);
+	flush_scheduled_work();
 }
 
 /*
- * Assumption: single reader/writer. This function is not re-entrant
+ * This assumes that the interrupt_lock is held.
  */
 bool enqueue_ih_ring_entry(struct kfd_dev *kfd,	const void *ih_ring_entry)
 {
-	int count;
+	struct ih_work *work = kzalloc(ih_work_size(kfd), GFP_ATOMIC);
 
-	count = kfifo_in(&kfd->ih_fifo, ih_ring_entry,
-				kfd->device_info->ih_ring_entry_size);
-	if (count != kfd->device_info->ih_ring_entry_size) {
+	if (!work) {
+		/* This is very bad, the system is likely to hang. */
 		dev_err_ratelimited(kfd_chardev(),
-			"Interrupt ring overflow, dropping interrupt %d\n",
-			count);
+			"Interrupt allocation failed, dropping interrupt.\n");
 		return false;
 	}
+	ih_work_init(work, kfd, ih_ring_entry);
 
+	// TODO: Maybe consider other queues? setup our own queue?
+	// use system default for now
+	if (!schedule_work(&work->interrupt_work)) {
+		dev_err_ratelimited(kfd_chardev(), "KFD: Failed to chedule work\n");
+		kfree(work);
+		return false;
+	}
 	return true;
 }
 
 /*
  * Assumption: single reader/writer. This function is not re-entrant
  */
-static bool dequeue_ih_ring_entry(struct kfd_dev *kfd, void *ih_ring_entry)
-{
-	int count;
-
-	count = kfifo_out(&kfd->ih_fifo, ih_ring_entry,
-				kfd->device_info->ih_ring_entry_size);
-
-	WARN_ON(count && count != kfd->device_info->ih_ring_entry_size);
-
-	return count == kfd->device_info->ih_ring_entry_size;
-}
-
 static void interrupt_wq(struct work_struct *work)
 {
-	struct kfd_dev *dev = container_of(work, struct kfd_dev,
-						interrupt_work);
+	struct ih_work *w = container_of(work, struct ih_work, interrupt_work);
 
-	uint32_t ih_ring_entry[DIV_ROUND_UP(
-				dev->device_info->ih_ring_entry_size,
-				sizeof(uint32_t))];
-
-	while (dequeue_ih_ring_entry(dev, ih_ring_entry))
-		dev->device_info->event_interrupt_class->interrupt_wq(dev,
-								ih_ring_entry);
+	w->kfd->device_info->event_interrupt_class->interrupt_wq(w->kfd, (void*)w->data);
+	// We are done and the work has been removed from the work queue
+	// nothing should touch this memory
+	kfree(w);
 }
 
 bool interrupt_is_wanted(struct kfd_dev *dev,
