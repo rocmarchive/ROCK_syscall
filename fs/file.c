@@ -720,6 +720,13 @@ struct file *fget(unsigned int fd)
 }
 EXPORT_SYMBOL(fget);
 
+struct file *fget_task(unsigned int fd, struct task_struct *tsk)
+{
+	return __fget(fd, FMODE_PATH, tsk);
+}
+EXPORT_SYMBOL(fget_task);
+
+
 struct file *fget_raw(unsigned int fd)
 {
 	return __fget(fd, 0, current);
