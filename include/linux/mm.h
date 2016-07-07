@@ -2102,18 +2102,26 @@ extern int install_special_mapping(struct mm_struct *mm,
 				   unsigned long addr, unsigned long len,
 				   unsigned long flags, struct page **pages);
 
-extern unsigned long get_unmapped_area(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+extern unsigned long get_unmapped_area(struct task_struct *, struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
 
-extern unsigned long mmap_region(struct file *file, unsigned long addr,
-	unsigned long len, vm_flags_t vm_flags, unsigned long pgoff,
-	struct list_head *uf);
-extern unsigned long do_mmap(struct file *file, unsigned long addr,
+extern unsigned long mmap_region(struct task_struct *tsk, struct file *file,
+	unsigned long addr, unsigned long len, vm_flags_t vm_flags,
+	unsigned long pgoff, struct list_head *uf);
+extern unsigned long do_mmap_task(struct task_struct *tsk,
+	struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot, unsigned long flags,
 	vm_flags_t vm_flags, unsigned long pgoff, unsigned long *populate,
 	struct list_head *uf);
 extern int do_munmap(struct mm_struct *, unsigned long, size_t,
 		     struct list_head *uf);
 
+static inline unsigned long do_mmap(struct file *file, unsigned long addr,
+	unsigned long len, unsigned long prot, unsigned long flags,
+	vm_flags_t vm_flags, unsigned long pgoff, unsigned long *populate,
+	struct list_head *uf)
+{
+	return do_mmap_task(current, file, addr, len, prot, flags, vm_flags, pgoff, populate, uf);
+}
 static inline unsigned long
 do_mmap_pgoff(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot, unsigned long flags,
@@ -2121,6 +2129,14 @@ do_mmap_pgoff(struct file *file, unsigned long addr,
 	struct list_head *uf)
 {
 	return do_mmap(file, addr, len, prot, flags, 0, pgoff, populate, uf);
+}
+static inline unsigned long
+do_mmap_pgoff_task(struct task_struct *tsk,
+	struct file *file, unsigned long addr,
+	unsigned long len, unsigned long prot, unsigned long flags,
+	unsigned long pgoff, unsigned long *populate, struct list_head *uf)
+{
+	return do_mmap_task(tsk, file, addr, len, prot, flags, 0, pgoff, populate, uf);
 }
 
 #ifdef CONFIG_MMU
@@ -2143,6 +2159,10 @@ extern int vm_munmap(unsigned long, size_t);
 extern unsigned long __must_check vm_mmap(struct file *, unsigned long,
         unsigned long, unsigned long,
         unsigned long, unsigned long);
+unsigned long mmap_pgoff_task(struct task_struct *tsk,
+		unsigned long addr, unsigned long len,
+		unsigned long prot, unsigned long flags,
+		unsigned long fd, unsigned long pgoff);
 
 struct vm_unmapped_area_info {
 #define VM_UNMAPPED_AREA_TOPDOWN 1
@@ -2152,6 +2172,7 @@ struct vm_unmapped_area_info {
 	unsigned long high_limit;
 	unsigned long align_mask;
 	unsigned long align_offset;
+	struct mm_struct *mm;
 };
 
 extern unsigned long unmapped_area(struct vm_unmapped_area_info *info);

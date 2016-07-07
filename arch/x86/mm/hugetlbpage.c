@@ -73,8 +73,8 @@ int pud_huge(pud_t pud)
 #endif
 
 #ifdef CONFIG_HUGETLB_PAGE
-static unsigned long hugetlb_get_unmapped_area_bottomup(struct file *file,
-		unsigned long addr, unsigned long len,
+static unsigned long hugetlb_get_unmapped_area_bottomup(struct task_struct *tsk,
+		struct file *file, unsigned long addr, unsigned long len,
 		unsigned long pgoff, unsigned long flags)
 {
 	struct hstate *h = hstate_file(file);
@@ -82,15 +82,16 @@ static unsigned long hugetlb_get_unmapped_area_bottomup(struct file *file,
 
 	info.flags = 0;
 	info.length = len;
-	info.low_limit = current->mm->mmap_legacy_base;
+	info.low_limit = tsk->mm->mmap_legacy_base;
 	info.high_limit = TASK_SIZE;
 	info.align_mask = PAGE_MASK & ~huge_page_mask(h);
 	info.align_offset = 0;
+	info.mm = tsk->mm;
 	return vm_unmapped_area(&info);
 }
 
-static unsigned long hugetlb_get_unmapped_area_topdown(struct file *file,
-		unsigned long addr0, unsigned long len,
+static unsigned long hugetlb_get_unmapped_area_topdown(struct task_struct *tsk,
+		struct file *file, unsigned long addr0, unsigned long len,
 		unsigned long pgoff, unsigned long flags)
 {
 	struct hstate *h = hstate_file(file);
@@ -100,9 +101,10 @@ static unsigned long hugetlb_get_unmapped_area_topdown(struct file *file,
 	info.flags = VM_UNMAPPED_AREA_TOPDOWN;
 	info.length = len;
 	info.low_limit = PAGE_SIZE;
-	info.high_limit = current->mm->mmap_base;
+	info.high_limit = tsk->mm->mmap_base;
 	info.align_mask = PAGE_MASK & ~huge_page_mask(h);
 	info.align_offset = 0;
+	info.mm = tsk->mm;
 	addr = vm_unmapped_area(&info);
 
 	/*
@@ -123,11 +125,12 @@ static unsigned long hugetlb_get_unmapped_area_topdown(struct file *file,
 }
 
 unsigned long
-hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
-		unsigned long len, unsigned long pgoff, unsigned long flags)
+hugetlb_get_unmapped_area(struct task_struct *tsk, struct file *file,
+		unsigned long addr, unsigned long len, unsigned long pgoff,
+		unsigned long flags)
 {
 	struct hstate *h = hstate_file(file);
-	struct mm_struct *mm = current->mm;
+	struct mm_struct *mm = tsk->mm;
 	struct vm_area_struct *vma;
 
 	if (len & ~huge_page_mask(h))
@@ -149,10 +152,10 @@ hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
 			return addr;
 	}
 	if (mm->get_unmapped_area == arch_get_unmapped_area)
-		return hugetlb_get_unmapped_area_bottomup(file, addr, len,
+		return hugetlb_get_unmapped_area_bottomup(tsk, file, addr, len,
 				pgoff, flags);
 	else
-		return hugetlb_get_unmapped_area_topdown(file, addr, len,
+		return hugetlb_get_unmapped_area_topdown(tsk, file, addr, len,
 				pgoff, flags);
 }
 #endif /* CONFIG_HUGETLB_PAGE */

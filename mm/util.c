@@ -293,12 +293,13 @@ int __weak get_user_pages_fast(unsigned long start,
 }
 EXPORT_SYMBOL_GPL(get_user_pages_fast);
 
-unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
+unsigned long vm_mmap_pgoff_task(struct task_struct *tsk,
+	struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot,
 	unsigned long flag, unsigned long pgoff)
 {
 	unsigned long ret;
-	struct mm_struct *mm = current->mm;
+	struct mm_struct *mm = tsk->mm;
 	unsigned long populate;
 	LIST_HEAD(uf);
 
@@ -306,8 +307,8 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
 	if (!ret) {
 		if (down_write_killable(&mm->mmap_sem))
 			return -EINTR;
-		ret = do_mmap_pgoff(file, addr, len, prot, flag, pgoff,
-				    &populate, &uf);
+		ret = do_mmap_pgoff_task(tsk, file, addr, len, prot, flag,
+		                         pgoff, &populate, &uf);
 		up_write(&mm->mmap_sem);
 		userfaultfd_unmap_complete(mm, &uf);
 		if (populate)
@@ -325,7 +326,7 @@ unsigned long vm_mmap(struct file *file, unsigned long addr,
 	if (unlikely(offset_in_page(offset)))
 		return -EINVAL;
 
-	return vm_mmap_pgoff(file, addr, len, prot, flag, offset >> PAGE_SHIFT);
+	return vm_mmap_pgoff_task(current, file, addr, len, prot, flag, offset >> PAGE_SHIFT);
 }
 EXPORT_SYMBOL(vm_mmap);
 

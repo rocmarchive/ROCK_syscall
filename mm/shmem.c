@@ -1989,11 +1989,11 @@ static int shmem_fault(struct vm_fault *vmf)
 	return ret;
 }
 
-unsigned long shmem_get_unmapped_area(struct file *file,
+unsigned long shmem_get_unmapped_area(struct task_struct *tsk, struct file *file,
 				      unsigned long uaddr, unsigned long len,
 				      unsigned long pgoff, unsigned long flags)
 {
-	unsigned long (*get_area)(struct file *,
+	unsigned long (*get_area)(struct task_struct *, struct file *,
 		unsigned long, unsigned long, unsigned long, unsigned long);
 	unsigned long addr;
 	unsigned long offset;
@@ -2004,8 +2004,8 @@ unsigned long shmem_get_unmapped_area(struct file *file,
 	if (len > TASK_SIZE)
 		return -ENOMEM;
 
-	get_area = current->mm->get_unmapped_area;
-	addr = get_area(file, uaddr, len, pgoff, flags);
+	get_area = tsk->mm->get_unmapped_area;
+	addr = get_area(tsk, file, uaddr, len, pgoff, flags);
 
 	if (!IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
 		return addr;
@@ -2061,7 +2061,7 @@ unsigned long shmem_get_unmapped_area(struct file *file,
 	if (inflated_len < len)
 		return addr;
 
-	inflated_addr = get_area(NULL, 0, inflated_len, 0, flags);
+	inflated_addr = get_area(tsk, NULL, 0, inflated_len, 0, flags);
 	if (IS_ERR_VALUE(inflated_addr))
 		return addr;
 	if (inflated_addr & ~PAGE_MASK)

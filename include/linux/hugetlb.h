@@ -298,7 +298,8 @@ hugetlb_file_setup(const char *name, size_t size, vm_flags_t acctflag,
 #endif /* !CONFIG_HUGETLBFS */
 
 #ifdef HAVE_ARCH_HUGETLB_UNMAPPED_AREA
-unsigned long hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
+unsigned long hugetlb_get_unmapped_area(struct task_struct *tsk,
+                                        struct file *file, unsigned long addr,
 					unsigned long len, unsigned long pgoff,
 					unsigned long flags);
 #endif /* HAVE_ARCH_HUGETLB_UNMAPPED_AREA */

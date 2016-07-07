@@ -113,12 +113,12 @@ static inline void mm_update_next_owner(struct mm_struct *mm)
 #ifdef CONFIG_MMU
 extern void arch_pick_mmap_layout(struct mm_struct *mm);
 extern unsigned long
-arch_get_unmapped_area(struct file *, unsigned long, unsigned long,
-		       unsigned long, unsigned long);
+arch_get_unmapped_area(struct task_struct *, struct file *, unsigned long,
+                       unsigned long, unsigned long, unsigned long);
 extern unsigned long
-arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
-			  unsigned long len, unsigned long pgoff,
-			  unsigned long flags);
+arch_get_unmapped_area_topdown(struct task_struct *tsk, struct file *filp,
+                          unsigned long addr, unsigned long len,
+			  unsigned long pgoff, unsigned long flags);
 #else
 static inline void arch_pick_mmap_layout(struct mm_struct *mm) {}
 #endif

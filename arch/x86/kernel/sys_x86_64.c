@@ -121,10 +121,10 @@ static void find_start_end(unsigned long flags, unsigned long *begin,
 }
 
 unsigned long
-arch_get_unmapped_area(struct file *filp, unsigned long addr,
+arch_get_unmapped_area(struct task_struct *tsk, struct file *filp, unsigned long addr,
 		unsigned long len, unsigned long pgoff, unsigned long flags)
 {
-	struct mm_struct *mm = current->mm;
+	struct mm_struct *mm = tsk->mm;
 	struct vm_area_struct *vma;
 	struct vm_unmapped_area_info info;
 	unsigned long begin, end;
@@ -151,6 +151,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 	info.high_limit = end;
 	info.align_mask = 0;
 	info.align_offset = pgoff << PAGE_SHIFT;
+	info.mm = tsk->mm;
 	if (filp) {
 		info.align_mask = get_align_mask();
 		info.align_offset += get_align_bits();
@@ -159,12 +160,12 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 }
 
 unsigned long
-arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+arch_get_unmapped_area_topdown(struct task_struct *tsk, struct file *filp, const unsigned long addr0,
 			  const unsigned long len, const unsigned long pgoff,
 			  const unsigned long flags)
 {
 	struct vm_area_struct *vma;
-	struct mm_struct *mm = current->mm;
+	struct mm_struct *mm = tsk->mm;
 	unsigned long addr = addr0;
 	struct vm_unmapped_area_info info;
 
@@ -194,6 +195,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 	info.high_limit = mm->mmap_base;
 	info.align_mask = 0;
 	info.align_offset = pgoff << PAGE_SHIFT;
+	info.mm = tsk->mm;
 	if (filp) {
 		info.align_mask = get_align_mask();
 		info.align_offset += get_align_bits();
@@ -210,5 +212,5 @@ bottomup:
 	 * can happen with large stack limits and large mmap()
 	 * allocations.
 	 */
-	return arch_get_unmapped_area(filp, addr0, len, pgoff, flags);
+	return arch_get_unmapped_area(tsk, filp, addr0, len, pgoff, flags);
 }

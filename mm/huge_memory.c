@@ -500,7 +500,8 @@ void prep_transhuge_page(struct page *page)
 	set_compound_page_dtor(page, TRANSHUGE_PAGE_DTOR);
 }
 
-unsigned long __thp_get_unmapped_area(struct file *filp, unsigned long len,
+unsigned long __thp_get_unmapped_area(struct task_struct *tsk,
+		struct file *filp, unsigned long len,
 		loff_t off, unsigned long flags, unsigned long size)
 {
 	unsigned long addr;
@@ -515,7 +516,7 @@ unsigned long __thp_get_unmapped_area(struct file *filp, unsigned long len,
 	if (len_pad < len || (off + len_pad) < off)
 		return 0;
 
-	addr = current->mm->get_unmapped_area(filp, 0, len_pad,
+	addr = tsk->mm->get_unmapped_area(tsk, filp, 0, len_pad,
 					      off >> PAGE_SHIFT, flags);
 	if (IS_ERR_VALUE(addr))
 		return 0;
@@ -524,8 +525,9 @@ unsigned long __thp_get_unmapped_area(struct file *filp, unsigned long len,
 	return addr;
 }
 
-unsigned long thp_get_unmapped_area(struct file *filp, unsigned long addr,
-		unsigned long len, unsigned long pgoff, unsigned long flags)
+unsigned long thp_get_unmapped_area(struct task_struct *tsk, struct file *filp,
+		unsigned long addr, unsigned long len, unsigned long pgoff,
+		unsigned long flags)
 {
 	loff_t off = (loff_t)pgoff << PAGE_SHIFT;
 
@@ -534,12 +536,12 @@ unsigned long thp_get_unmapped_area(struct file *filp, unsigned long addr,
 	if (!IS_DAX(filp->f_mapping->host) || !IS_ENABLED(CONFIG_FS_DAX_PMD))
 		goto out;
 
-	addr = __thp_get_unmapped_area(filp, len, off, flags, PMD_SIZE);
+	addr = __thp_get_unmapped_area(tsk, filp, len, off, flags, PMD_SIZE);
 	if (addr)
 		return addr;
 
  out:
-	return current->mm->get_unmapped_area(filp, addr, len, pgoff, flags);
+	return tsk->mm->get_unmapped_area(tsk, filp, addr, len, pgoff, flags);
 }
 EXPORT_SYMBOL_GPL(thp_get_unmapped_area);
 

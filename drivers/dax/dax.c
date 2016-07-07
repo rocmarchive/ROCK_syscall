@@ -625,9 +625,9 @@ static int dax_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 
 /* return an unmapped area aligned to the dax region specified alignment */
-static unsigned long dax_get_unmapped_area(struct file *filp,
-		unsigned long addr, unsigned long len, unsigned long pgoff,
-		unsigned long flags)
+static unsigned long dax_get_unmapped_area(struct task_struct *tsk,
+		struct file *filp, unsigned long addr, unsigned long len,
+		unsigned long pgoff, unsigned long flags)
 {
 	unsigned long off, off_end, off_align, len_align, addr_align, align;
 	struct dax_dev *dax_dev = filp ? filp->private_data : NULL;
@@ -649,14 +649,14 @@ static unsigned long dax_get_unmapped_area(struct file *filp,
 	if ((off + len_align) < off)
 		goto out;
 
-	addr_align = current->mm->get_unmapped_area(filp, addr, len_align,
+	addr_align = tsk->mm->get_unmapped_area(tsk, filp, addr, len_align,
 			pgoff, flags);
 	if (!IS_ERR_VALUE(addr_align)) {
 		addr_align += (off - addr_align) & (align - 1);
 		return addr_align;
 	}
  out:
-	return current->mm->get_unmapped_area(filp, addr, len, pgoff, flags);
+	return tsk->mm->get_unmapped_area(tsk, filp, addr, len, pgoff, flags);
 }
 
 static int dax_open(struct inode *inode, struct file *filp)
