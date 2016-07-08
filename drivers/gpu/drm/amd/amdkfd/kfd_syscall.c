@@ -19,21 +19,23 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
+#include <asm/unistd.h>
 
 #include <linux/atomic.h>
 #include <linux/file.h>
 #include <linux/fdtable.h>
 #include <linux/fsnotify.h>
 #include <linux/highmem.h>
+#include <linux/hugetlb.h>
 #include <linux/kfd_sc.h>
 #include <linux/mm.h>
+#include <linux/mman.h>
 #include <linux/mmu_context.h>
 #include <linux/pagemap.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 
 #include <asm/errno.h>
-#include <asm/unistd.h>
 
 #include "kfd_priv.h"
 #include "kfd_dbgmgr.h"
@@ -155,7 +157,7 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
                            bool *usemm, bool *needs_resume)
 {
 	u32 sc_num;
-	int ret = 0;
+	long ret = 0;
 	bool noret;
 
 	//TODO: verify that this si legal to do.
@@ -208,6 +210,10 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		break;
 	case __NR_close:
 		ret = __close_fd(p->lead_thread->files, s->arg[0]);
+		break;
+	case __NR_mmap:
+		ret = mmap_pgoff_task(p->lead_thread, s->arg[0], s->arg[1],
+		                      s->arg[2], s->arg[3], s->arg[4], s->arg[5]);
 		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
