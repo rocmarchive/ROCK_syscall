@@ -242,7 +242,7 @@ set_brk:
 	up_write(&mm->mmap_sem);
 	userfaultfd_unmap_complete(mm, &uf);
 	if (populate)
-		mm_populate(oldbrk, newbrk - oldbrk);
+		mm_populate(mm, oldbrk, newbrk - oldbrk);
 	return brk;
 
 out:
@@ -2792,7 +2792,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 out:
 	up_write(&mm->mmap_sem);
 	if (populate)
-		mm_populate(ret, populate);
+		mm_populate(mm, ret, populate);
 	if (!IS_ERR_VALUE(ret))
 		ret = 0;
 	return ret;
@@ -2919,7 +2919,7 @@ int vm_brk_flags(unsigned long addr, unsigned long len, unsigned long flags)
 	up_write(&mm->mmap_sem);
 	userfaultfd_unmap_complete(mm, &uf);
 	if (populate && !ret)
-		mm_populate(addr, len);
+		mm_populate(mm, addr, len);
 	return ret;
 }
 EXPORT_SYMBOL(vm_brk_flags);

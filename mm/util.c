@@ -311,7 +311,7 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
 		up_write(&mm->mmap_sem);
 		userfaultfd_unmap_complete(mm, &uf);
 		if (populate)
-			mm_populate(ret, populate);
+			mm_populate(mm, ret, populate);
 	}
 	return ret;
 }
