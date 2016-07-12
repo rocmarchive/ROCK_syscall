@@ -779,6 +779,7 @@ void userfaultfd_unmap_complete(struct mm_struct *mm, struct list_head *uf)
 		kfree(ctx);
 	}
 }
+EXPORT_SYMBOL_GPL(userfaultfd_unmap_complete);
 
 static int userfaultfd_release(struct inode *inode, struct file *file)
 {

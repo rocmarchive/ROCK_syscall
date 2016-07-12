@@ -34,6 +34,7 @@
 #include <linux/pagemap.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/userfaultfd_k.h>
 
 #include <asm/errno.h>
 
@@ -215,6 +216,14 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		ret = mmap_pgoff_task(p->lead_thread, s->arg[0], s->arg[1],
 		                      s->arg[2], s->arg[3], s->arg[4], s->arg[5]);
 		break;
+	case __NR_munmap: {
+		LIST_HEAD(uf);
+		down_write(&p->lead_thread->mm->mmap_sem);
+		ret = do_munmap(p->lead_thread->mm, s->arg[0], s->arg[1], &uf);
+		up_write(&p->lead_thread->mm->mmap_sem);
+		userfaultfd_unmap_complete(p->lead_thread->mm, &uf);
+		break;
+	}
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
 		       "%x:%x:%llx:%llx:%llx:%llx:%llx:%llx\n",
