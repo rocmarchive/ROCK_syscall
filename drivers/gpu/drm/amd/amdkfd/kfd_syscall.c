@@ -50,6 +50,25 @@ static void fdput_pos_task(struct fd f)
 	fdput(f);
 }
 
+/* Mostly a copy of sys_read. */
+static ssize_t gpu_sc_read(struct kfd_process *p, unsigned int fd,
+                           unsigned long ptr, size_t count)
+{
+	struct fd f = fdget_pos_task(fd, p->lead_thread);
+	ssize_t ret = -EBADF;
+
+	if (f.file) {
+		// file_pos_read
+		loff_t pos = f.file->f_pos;
+		ret = vfs_read(p->lead_thread, f.file, (char *)ptr, count, &pos);
+		if (ret >= 0)
+			f.file->f_pos = pos; // file_pos_write(f.file, pos);
+		fdput_pos_task(f);
+	}
+
+	return ret;
+}
+
 /* Mostly a copy of sys_write. */
 static ssize_t gpu_sc_write(struct kfd_process *p, unsigned int fd,
                             unsigned long ptr, size_t count)
@@ -92,6 +111,13 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 	switch (sc_num) {
 	case __NR_restart_syscall: /* hijack __NR_restart_syscall as nop syscall */
 		ret = 0;
+		break;
+	case __NR_read:
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = gpu_sc_read(p, s->arg[0], s->arg[1], s->arg[2]);
 		break;
 	case __NR_write:
 		if (!*usemm) {
