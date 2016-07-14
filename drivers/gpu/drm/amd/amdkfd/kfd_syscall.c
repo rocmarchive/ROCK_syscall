@@ -69,6 +69,27 @@ static ssize_t gpu_sc_read(struct kfd_process *p, unsigned int fd,
 	return ret;
 }
 
+/* Mostly a copy of sys_pread64. */
+static ssize_t gpu_sc_pread(struct kfd_process *p, unsigned int fd,
+                            unsigned long ptr, size_t count, loff_t pos)
+{
+	struct fd f = {0,};
+	ssize_t ret = -EBADF;
+
+	if (pos < 0)
+		return -EINVAL;
+
+	f = fdget_task(fd, p->lead_thread);
+	if (f.file) {
+		ret = -ESPIPE;
+		if (f.file->f_mode & FMODE_PREAD)
+			ret = vfs_read(p->lead_thread, f.file, (char *)ptr, count, &pos);
+		fdput(f);
+	}
+
+	return ret;
+}
+
 /* Mostly a copy of sys_write. */
 static ssize_t gpu_sc_write(struct kfd_process *p, unsigned int fd,
                             unsigned long ptr, size_t count)
@@ -139,6 +160,13 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			*usemm = true;
 		}
 		ret = gpu_sc_read(p, s->arg[0], s->arg[1], s->arg[2]);
+		break;
+	case __NR_pread64:
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = gpu_sc_pread(p, s->arg[0], s->arg[1], s->arg[2], s->arg[3]);
 		break;
 	case __NR_write:
 		if (!*usemm) {
