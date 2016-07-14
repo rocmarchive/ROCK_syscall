@@ -44,6 +44,7 @@ extern struct file *fget(unsigned int fd);
 extern struct file *fget_task(unsigned int fd, struct task_struct *tsk);
 extern struct file *fget_raw(unsigned int fd);
 extern unsigned long __fdget(unsigned int fd);
+extern unsigned long __fdget_task(unsigned int fd, struct task_struct *t);
 extern unsigned long __fdget_raw(unsigned int fd);
 extern unsigned long __fdget_pos(unsigned int fd);
 extern unsigned long __fdget_pos_task(unsigned int fd, struct task_struct *t);
@@ -57,6 +58,10 @@ static inline struct fd __to_fd(unsigned long v)
 static inline struct fd fdget(unsigned int fd)
 {
 	return __to_fd(__fdget(fd));
+}
+static inline struct fd fdget_task(unsigned int fd, struct task_struct *t)
+{
+	return __to_fd(__fdget_task(fd, t));
 }
 
 static inline struct fd fdget_raw(unsigned int fd)

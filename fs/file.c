@@ -776,6 +776,7 @@ unsigned long __fdget_task(unsigned int fd, struct task_struct *t)
 {
 	return __fget_light(fd, FMODE_PATH, t);
 }
+EXPORT_SYMBOL(__fdget_task);
 
 unsigned long __fdget_raw(unsigned int fd)
 {
