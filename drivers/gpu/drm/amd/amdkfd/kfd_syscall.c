@@ -88,6 +88,27 @@ static ssize_t gpu_sc_write(struct kfd_process *p, unsigned int fd,
 	return ret;
 }
 
+/* Mostly a copy of sys_pwrite64. */
+static ssize_t gpu_sc_pwrite(struct kfd_process *p, unsigned int fd,
+                             unsigned long ptr, size_t count, loff_t pos)
+{
+	struct fd f;
+	ssize_t ret = -EBADF;
+
+	if (pos < 0)
+		return -EINVAL;
+
+	f = fdget_task(fd, p->lead_thread);
+	if (f.file) {
+		ret = -ESPIPE;
+		if (f.file->f_mode & FMODE_PWRITE)
+			ret = vfs_write(p->lead_thread, f.file, (char *)ptr, count, &pos);
+		fdput(f);
+	}
+
+	return ret;
+}
+
 static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
                            bool *usemm)
 {
@@ -125,6 +146,13 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			*usemm = true;
 		}
 		ret = gpu_sc_write(p, s->arg[0], s->arg[1], s->arg[2]);
+		break;
+	case __NR_pwrite64:
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = gpu_sc_pwrite(p, s->arg[0], s->arg[1], s->arg[2], s->arg[3]);
 		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
