@@ -22,6 +22,7 @@
 
 #include <linux/atomic.h>
 #include <linux/file.h>
+#include <linux/fdtable.h>
 #include <linux/fsnotify.h>
 #include <linux/highmem.h>
 #include <linux/kfd_sc.h>
@@ -203,6 +204,9 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		break;
 	case __NR_lseek:
 		ret = gpu_sc_lseek(p, s->arg[0], s->arg[1], s->arg[2]);
+		break;
+	case __NR_close:
+		ret = __close_fd(p->lead_thread->files, s->arg[0]);
 		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
