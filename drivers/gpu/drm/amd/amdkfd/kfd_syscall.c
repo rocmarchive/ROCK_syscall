@@ -130,6 +130,25 @@ static ssize_t gpu_sc_pwrite(struct kfd_process *p, unsigned int fd,
 	return ret;
 }
 
+static ssize_t gpu_sc_lseek(struct kfd_process *p,  unsigned int fd,
+                            off_t offset, unsigned int whence)
+{
+	off_t retval;
+	struct fd f = fdget_pos_task(fd, p->lead_thread);
+	if (!f.file)
+		return -EBADF;
+
+	retval = -EINVAL;
+	if (whence <= SEEK_MAX) {
+		loff_t res = vfs_llseek(f.file, offset, whence);
+		retval = res;
+		if (res != (loff_t)retval)
+			retval = -EOVERFLOW;	/* LFS: should only happen on 32 bit platforms */
+	}
+	fdput_pos_task(f);
+	return retval;
+}
+
 static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
                            bool *usemm)
 {
@@ -181,6 +200,9 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			*usemm = true;
 		}
 		ret = gpu_sc_pwrite(p, s->arg[0], s->arg[1], s->arg[2], s->arg[3]);
+		break;
+	case __NR_lseek:
+		ret = gpu_sc_lseek(p, s->arg[0], s->arg[1], s->arg[2]);
 		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
