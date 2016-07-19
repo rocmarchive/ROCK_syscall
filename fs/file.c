@@ -557,9 +557,15 @@ static int alloc_fd(unsigned start, unsigned flags)
 	return __alloc_fd(current->files, start, rlimit(RLIMIT_NOFILE), flags);
 }
 
+int get_unused_fd_flags_task(struct task_struct *tsk, unsigned flags)
+{
+	return __alloc_fd(tsk->files, 0, task_rlimit(tsk, RLIMIT_NOFILE), flags);
+}
+EXPORT_SYMBOL(get_unused_fd_flags_task);
+
 int get_unused_fd_flags(unsigned flags)
 {
-	return __alloc_fd(current->files, 0, rlimit(RLIMIT_NOFILE), flags);
+	return get_unused_fd_flags_task(current, flags);
 }
 EXPORT_SYMBOL(get_unused_fd_flags);
 
@@ -571,14 +577,18 @@ static void __put_unused_fd(struct files_struct *files, unsigned int fd)
 		files->next_fd = fd;
 }
 
-void put_unused_fd(unsigned int fd)
+void put_unused_fd_files(struct files_struct *files, unsigned int fd)
 {
-	struct files_struct *files = current->files;
 	spin_lock(&files->file_lock);
 	__put_unused_fd(files, fd);
 	spin_unlock(&files->file_lock);
 }
+EXPORT_SYMBOL(put_unused_fd_files);
 
+void put_unused_fd(unsigned int fd)
+{
+	put_unused_fd_files(current->files, fd);
+}
 EXPORT_SYMBOL(put_unused_fd);
 
 /*

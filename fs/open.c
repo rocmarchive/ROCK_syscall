@@ -1046,15 +1046,15 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
-	fd = get_unused_fd_flags(flags);
+	fd = get_unused_fd_flags_task(current, flags);
 	if (fd >= 0) {
 		struct file *f = do_filp_open(dfd, tmp, &op);
 		if (IS_ERR(f)) {
-			put_unused_fd(fd);
+			put_unused_fd_files(current->files, fd);
 			fd = PTR_ERR(f);
 		} else {
 			fsnotify_open(f);
-			fd_install(fd, f);
+			__fd_install(current->files, fd, f);
 		}
 	}
 	putname(tmp);
