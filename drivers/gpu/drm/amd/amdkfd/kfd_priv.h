@@ -296,6 +296,8 @@ struct kfd_dev {
 
 	/* IB usage */
 	uint32_t ib_size;
+
+	struct workqueue_struct *irq_wq;
 };
 
 struct kfd_ipc_obj;

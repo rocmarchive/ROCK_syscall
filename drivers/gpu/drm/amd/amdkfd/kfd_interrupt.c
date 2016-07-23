@@ -69,6 +69,9 @@ static size_t ih_work_size(struct kfd_dev *kfd)
 int kfd_interrupt_init(struct kfd_dev *kfd)
 {
 	spin_lock_init(&kfd->interrupt_lock);
+	kfd->irq_wq = alloc_workqueue("kfd_irq%d", WQ_UNBOUND | WQ_SYSFS, 0, kfd->id);
+	if (!kfd->irq_wq)
+		return ENOMEM;
 	kfd->interrupts_active = true;
 
 	/*
@@ -90,8 +93,10 @@ void kfd_interrupt_exit(struct kfd_dev *kfd)
 	 */
 	unsigned long flags;
 
+	struct workqueue_struct *wq = kfd->irq_wq;
 	spin_lock_irqsave(&kfd->interrupt_lock, flags);
 	kfd->interrupts_active = false;
+	kfd->irq_wq = NULL;
 	spin_unlock_irqrestore(&kfd->interrupt_lock, flags);
 
 	/*
@@ -99,7 +104,8 @@ void kfd_interrupt_exit(struct kfd_dev *kfd)
 	 * work-queue items that will access interrupt_ring. New work items
 	 * can't be created because we stopped interrupt handling above.
 	 */
-	flush_scheduled_work();
+	flush_workqueue(wq);
+	destroy_workqueue(wq);
 }
 
 /*
@@ -117,10 +123,8 @@ bool enqueue_ih_ring_entry(struct kfd_dev *kfd,	const void *ih_ring_entry)
 	}
 	ih_work_init(work, kfd, ih_ring_entry);
 
-	// TODO: Maybe consider other queues? setup our own queue?
-	// use system default for now
-	if (!schedule_work(&work->interrupt_work)) {
-		dev_err_ratelimited(kfd_chardev(), "KFD: Failed to chedule work\n");
+	if (!kfd->irq_wq || !queue_work(kfd->irq_wq, &work->interrupt_work)) {
+		dev_err_ratelimited(kfd_chardev(), "KFD: Failed to schedule work %s\n", kfd->irq_wq ? "" : "(NO workqueue)");
 		kfree(work);
 		return false;
 	}
