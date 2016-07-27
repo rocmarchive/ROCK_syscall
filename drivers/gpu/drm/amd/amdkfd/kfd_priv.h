@@ -138,6 +138,21 @@ extern int ignore_crat;
  */
 extern int vega10_noretry;
 
+/*
+ * Kernel module parameter so control interrupt coalescing magnitude.
+ */
+extern unsigned short interrupts_per_task;
+
+/*
+ * Kernel module parameter to control interrupt coalescing time slot.
+ */
+extern unsigned short interrupts_coalesce_delay;
+
+/*
+ * Kernel module parameter to control interrupt coalescing timer reset.
+ */
+extern bool interrupts_delay_extend;
+
 /**
  * enum kfd_sched_policy
  *
@@ -298,6 +313,9 @@ struct kfd_dev {
 	uint32_t ib_size;
 
 	struct workqueue_struct *irq_wq;
+	struct ih_work * irq_task_in_progress;
+	struct delayed_work irq_watchdog;
+	u64 in_progress_time_stamp;
 };
 
 struct kfd_ipc_obj;
