@@ -222,11 +222,13 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		*needs_resume = true;
 }
 
+#define DEFAULT_COUNT 25
 static void kfd_sc_resume_wave(struct kfd_process *p, uint32_t msg_id, bool all)
 {
 	struct dbg_wave_control_info wac_info;
 	struct kfd_dev *dev;
 	long ret;
+	int count = DEFAULT_COUNT;
 
 	memset((void *) &wac_info, 0, sizeof(struct dbg_wave_control_info));
 	wac_info.process = p;
@@ -244,10 +246,21 @@ static void kfd_sc_resume_wave(struct kfd_process *p, uint32_t msg_id, bool all)
 
 	dev = kfd_get_first_process_device_data(p)->dev;
 	mutex_lock(get_dbgmgr_mutex());
-	ret = kfd_dbgmgr_wave_control(dev->dbgmgr, &wac_info);
-	if (ret)
-		pr_err("KFD_SC: Failed to resume wave %x: %ld\n", msg_id, ret);
+	do {
+		/* ENOMEM just means we ran out of queue space */
+		if (count == 0 && ret != -ENOMEM) {
+			wac_info.mode = HSA_DBG_WAVEMODE_BROADCAST_PROCESS;
+			wac_info.dbgWave_msg.DbgWaveMsg.WaveMsgInfoGen2.Value = 0;
+			pr_warn("KFD_SC: Resuming all waves.\n");
+		}
+		ret = kfd_dbgmgr_wave_control(dev->dbgmgr, &wac_info);
+		if (ret)
+			pr_err("KFD_SC: Failed to resume wave %x: %ld\n", msg_id, ret);
+	} while ((ret == -ETIME || ret == -ENOMEM) && (count-- > 0));
 	mutex_unlock(get_dbgmgr_mutex());
+	if (count != DEFAULT_COUNT)
+		pr_info("KFD_SC: Wave resume status %x: %ld (%d retries)\n",
+			msg_id, ret, DEFAULT_COUNT - count);
 }
 
 #define WAVESIZE 64
