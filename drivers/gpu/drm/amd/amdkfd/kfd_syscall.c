@@ -36,6 +36,7 @@
 #include <asm/unistd.h>
 
 #include "kfd_priv.h"
+#include "kfd_dbgmgr.h"
 
 /* TODO: These are almost exact copies of functions in  fs/read_write.c.
  * Export and reuse those functions instead. */
@@ -151,7 +152,7 @@ static ssize_t gpu_sc_lseek(struct kfd_process *p,  unsigned int fd,
 }
 
 static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
-                           bool *usemm)
+                           bool *usemm, bool *needs_resume)
 {
 	u32 sc_num;
 	int ret = 0;
@@ -217,12 +218,43 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 	}
 	s->arg[0] = ret;
 	atomic_set(status, noret ? KFD_SC_STATUS_FREE : KFD_SC_STATUS_FINISHED);
+	if (!noret)
+		*needs_resume = true;
+}
+
+static void kfd_sc_resume_wave(struct kfd_process *p, uint32_t msg_id, bool all)
+{
+	struct dbg_wave_control_info wac_info;
+	struct kfd_dev *dev;
+	long ret;
+
+	memset((void *) &wac_info, 0, sizeof(struct dbg_wave_control_info));
+	wac_info.process = p;
+	wac_info.operand = HSA_DBG_WAVEOP_RESUME;
+	wac_info.mode = all ? HSA_DBG_WAVEMODE_BROADCAST_PROCESS : HSA_DBG_WAVEMODE_SINGLE;
+	wac_info.trapId = 0; //not used for resume
+	wac_info.dbgWave_msg.DbgWaveMsg.WaveMsgInfoGen2.Value = all ? 0 : msg_id;
+
+	/* Make sure we don't send unintended data */
+	wac_info.dbgWave_msg.DbgWaveMsg.WaveMsgInfoGen2.ui32.UserData = 0;
+	wac_info.dbgWave_msg.DbgWaveMsg.WaveMsgInfoGen2.ui32.Priv = 0;
+	wac_info.dbgWave_msg.DbgWaveMsg.WaveMsgInfoGen2.ui32.Reserved0 = 0;
+	wac_info.dbgWave_msg.DbgWaveMsg.WaveMsgInfoGen2.ui32.Reserved1 = 0;
+	wac_info.dbgWave_msg.MemoryVA = NULL; //not used for resume
+
+	dev = kfd_get_first_process_device_data(p)->dev;
+	mutex_lock(get_dbgmgr_mutex());
+	ret = kfd_dbgmgr_wave_control(dev->dbgmgr, &wac_info);
+	if (ret)
+		pr_err("KFD_SC: Failed to resume wave %x: %ld\n", msg_id, ret);
+	mutex_unlock(get_dbgmgr_mutex());
 }
 
 #define WAVESIZE 64
 int kfd_syscall(struct kfd_process *p, unsigned data)
 {
 	bool usemm = false;
+	bool needs_resume = false;
 	unsigned start, to_scan, i, handled;
 	unsigned wf_id = ( ((data >> 18) & 0x3f) | ((data >> 1) & 0x40) | ((data >> 17) & 0x180) ) * 10 + ((data >> 14) & 0xf);
 
@@ -254,7 +286,7 @@ retry:
 		if (p->sc_kloc[i].status == KFD_SC_STATUS_READY) {
 			if (to_scan != WAVESIZE)
 				pr_info("KFD_SC: Found request at %d\n", i);
-			kfd_sc_process(p, &(p->sc_kloc[i]), &usemm);
+			kfd_sc_process(p, &(p->sc_kloc[i]), &usemm, &needs_resume);
 			++handled;
 		}
 	}
@@ -274,6 +306,10 @@ retry:
 	}
 	if (usemm)
 		unuse_mm(p->mm);
+	if (needs_resume) {
+		pr_debug("KFD_SC: Resumeing wave %x\n", data);
+		kfd_sc_resume_wave(p, data, to_scan != WAVESIZE);
+	}
 	pr_debug("KFD_SC: Handled %u syscall requests in %u\n",
 		handled, to_scan);
 
