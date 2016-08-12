@@ -443,6 +443,7 @@ static void kfd_process_notifier_release(struct mmu_notifier *mn,
 			if (status == 0) {
 				kfd_dbgmgr_destroy(dev->dbgmgr);
 				dev->dbgmgr = NULL;
+				dev->dbgmgr_refcount = 0;
 			}
 		}
 		mutex_unlock(get_dbgmgr_mutex());
@@ -819,6 +820,7 @@ void kfd_process_iommu_unbind_callback(struct kfd_dev *dev, unsigned int pasid)
 		if (kfd_dbgmgr_unregister(dev->dbgmgr, p) == 0) {
 			kfd_dbgmgr_destroy(dev->dbgmgr);
 			dev->dbgmgr = NULL;
+			dev->dbgmgr_refcount = 0;
 		}
 	}
 

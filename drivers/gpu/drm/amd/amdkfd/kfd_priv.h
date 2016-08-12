@@ -297,6 +297,9 @@ struct kfd_dev {
 	/* Debug manager */
 	struct kfd_dbgmgr *dbgmgr;
 
+	/* Debug manager reference count */
+	int dbgmgr_refcount;
+
 	/* MEC firmware version*/
 	uint16_t mec_fw_version;
 

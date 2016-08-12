@@ -576,6 +576,7 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 		goto kfd_resume_error;
 
 	kfd->dbgmgr = NULL;
+	kfd->dbgmgr_refcount = 0;
 
 	kfd->init_complete = true;
 	dev_info(kfd_device, "added device %x:%x\n", kfd->pdev->vendor,

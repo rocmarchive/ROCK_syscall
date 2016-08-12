@@ -463,6 +463,8 @@ static int kfd_ioctl_set_syscall_area(struct file *filp,
 {
 	int ret, num_pages, i;
 	struct page ** pages;
+	struct kfd_dev *dev;
+	struct kfd_process_device *pdd;
 	struct kfd_ioctl_set_syscall_area_args *args = data;
 	if (!p)
 		return -EINVAL;
@@ -474,6 +476,7 @@ static int kfd_ioctl_set_syscall_area(struct file *filp,
 			num_pages);
 		return -ENOMEM;
 	}
+	down_write(&p->lock);
 
 	ret = get_user_pages_fast(args->sc_area_address, num_pages, 1, pages);
 	if (ret != num_pages) {
@@ -494,17 +497,61 @@ static int kfd_ioctl_set_syscall_area(struct file *filp,
 	// if we don't do this
 	memset(p->sc_kloc, 0, num_pages * PAGE_SIZE);
 
+	if (!kfd_has_process_device_data(p)) {
+		ret = -ENODEV;
+		pr_err("KFD_SC: No process device data\n");
+		goto unmap;
+	}
+
+	pdd = kfd_get_first_process_device_data(p);
+	if (IS_ERR(pdd) || !pdd) {
+		ret = PTR_ERR(pdd);
+		pr_err("KFD_SC: Error getting device data\n");
+		goto unmap;
+	}
+	dev = pdd->dev;
+	mutex_lock(get_dbgmgr_mutex());
+	if (dev->dbgmgr == NULL) {
+		struct kfd_dbgmgr *dbgmgr_ptr = NULL;
+		bool create_ok = kfd_dbgmgr_create(&dbgmgr_ptr, dev);
+		if (create_ok) {
+			ret = kfd_dbgmgr_register(dbgmgr_ptr, p);
+			if (ret != 0) {
+				kfd_dbgmgr_destroy(dbgmgr_ptr);
+				pr_err("KFD_SC: Failed to register dbgmgr\n");
+			} else {
+				dev->dbgmgr = dbgmgr_ptr;
+				++dev->dbgmgr_refcount;
+			}
+		} else {
+			pr_err("KFD_SC: Failed to create dbgmgr\n");
+			ret = -ENOMEM;
+		}
+	} else {
+		++dev->dbgmgr_refcount;
+		pr_info("KFD_SC: Registered to existing dbgmgr: %d\n", ret);
+	}
+	mutex_unlock(get_dbgmgr_mutex());
+
+	if (ret != 0)
+		goto unmap;
+
 	p->sc_location = (__user struct kfd_sc *)args->sc_area_address;
 	p->sc_elements = args->sc_elements;
 	pr_debug("KFD_SC: process setup SC area: %p (%lu), kloc: %p-%p(%u pages)\n",
 		p->sc_location, p->sc_elements, p->sc_kloc,
 		p->sc_kloc + p->sc_elements, num_pages);
+
 unpin:
+	up_write(&p->lock);
 	for (i = 0; ret && i < num_pages; ++i)
 		if (pages[i])
 			put_page(pages[i]);
 	kfree(pages);
 	return ret;
+unmap:
+	vunmap(p->sc_kloc);
+	goto unpin;
 }
 
 static int kfd_ioctl_free_syscall_area(struct file *filp,
@@ -513,6 +560,7 @@ static int kfd_ioctl_free_syscall_area(struct file *filp,
 	void * addr;
 	size_t size;
 	struct kfd_ioctl_free_syscall_area_args *args = data;
+	struct kfd_dev *dev;
 	if (!p)
 		return -EINVAL;
 	args->sc_area_address = (uint64_t)p->sc_location;
@@ -539,7 +587,22 @@ static int kfd_ioctl_free_syscall_area(struct file *filp,
 	p->sc_location = NULL;
 	p->sc_elements = 0;
 	p->sc_kloc = NULL;
+
+	/* device data has to be present or we are in trouble */
+	dev = kfd_get_first_process_device_data(p)->dev;
+
+	mutex_lock(get_dbgmgr_mutex());
+	if (dev->dbgmgr_refcount > 0 && --dev->dbgmgr_refcount == 0) {
+		int status = kfd_dbgmgr_unregister(dev->dbgmgr, p);
+		if (status == 0) {
+			kfd_dbgmgr_destroy(dev->dbgmgr);
+			dev->dbgmgr = NULL;
+		}
+	}
+	mutex_unlock(get_dbgmgr_mutex());
+
 	up_write(&p->lock);
+
 	return 0;
 }
 
@@ -661,11 +724,15 @@ kfd_ioctl_dbg_register(struct file *filep, struct kfd_process *p, void *data)
 		create_ok = kfd_dbgmgr_create(&dbgmgr_ptr, dev);
 		if (create_ok) {
 			status = kfd_dbgmgr_register(dbgmgr_ptr, p);
-			if (status != 0)
+			if (status != 0) {
 				kfd_dbgmgr_destroy(dbgmgr_ptr);
-			else
+			} else {
+				++dev->dbgmgr_refcount;
 				dev->dbgmgr = dbgmgr_ptr;
+			}
 		}
+	} else {
+		++dev->dbgmgr_refcount;
 	}
 
 out:
@@ -695,10 +762,12 @@ static int kfd_ioctl_dbg_unregister(struct file *filep,
 
 	mutex_lock(get_dbgmgr_mutex());
 
-	status = kfd_dbgmgr_unregister(dev->dbgmgr, p);
-	if (status == 0) {
-		kfd_dbgmgr_destroy(dev->dbgmgr);
-		dev->dbgmgr = NULL;
+	if (dev->dbgmgr_refcount > 0 && --dev->dbgmgr_refcount == 0) {
+		status = kfd_dbgmgr_unregister(dev->dbgmgr, p);
+		if (status == 0) {
+			kfd_dbgmgr_destroy(dev->dbgmgr);
+			dev->dbgmgr = NULL;
+		}
 	}
 
 	mutex_unlock(get_dbgmgr_mutex());
