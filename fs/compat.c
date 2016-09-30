@@ -1004,7 +1004,7 @@ COMPAT_SYSCALL_DEFINE3(getdents64, unsigned int, fd,
  */
 COMPAT_SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 {
-	return do_sys_open(AT_FDCWD, filename, flags, mode);
+	return do_sys_open(current, AT_FDCWD, filename, flags, mode);
 }
 
 /*
@@ -1013,7 +1013,7 @@ COMPAT_SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t,
  */
 COMPAT_SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags, umode_t, mode)
 {
-	return do_sys_open(dfd, filename, flags, mode);
+	return do_sys_open(current, dfd, filename, flags, mode);
 }
 
 #define __COMPAT_NFDBITS       (8 * sizeof(compat_ulong_t))

@@ -1033,7 +1033,8 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
-long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
+long do_sys_open(struct task_struct *tsk, int dfd, const char __user *filename,
+                 int flags, umode_t mode)
 {
 	struct open_flags op;
 	int fd = build_open_flags(flags, mode, &op);
@@ -1046,15 +1047,15 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
-	fd = get_unused_fd_flags_task(current, flags);
+	fd = get_unused_fd_flags_task(tsk, flags);
 	if (fd >= 0) {
 		struct file *f = do_filp_open(dfd, tmp, &op);
 		if (IS_ERR(f)) {
-			put_unused_fd_files(current->files, fd);
+			put_unused_fd_files(tsk->files, fd);
 			fd = PTR_ERR(f);
 		} else {
 			fsnotify_open(f);
-			__fd_install(current->files, fd, f);
+			__fd_install(tsk->files, fd, f);
 		}
 	}
 	putname(tmp);
@@ -1066,7 +1067,7 @@ SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 	if (force_o_largefile())
 		flags |= O_LARGEFILE;
 
-	return do_sys_open(AT_FDCWD, filename, flags, mode);
+	return do_sys_open(current, AT_FDCWD, filename, flags, mode);
 }
 
 SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags,
@@ -1075,7 +1076,7 @@ SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags,
 	if (force_o_largefile())
 		flags |= O_LARGEFILE;
 
-	return do_sys_open(dfd, filename, flags, mode);
+	return do_sys_open(current, dfd, filename, flags, mode);
 }
 
 #ifndef __alpha__
