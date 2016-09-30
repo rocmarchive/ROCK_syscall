@@ -103,8 +103,9 @@ struct open_flags {
 	int intent;
 	int lookup_flags;
 };
-extern struct file *do_filp_open(int dfd, struct filename *pathname,
-		const struct open_flags *op);
+extern struct file *do_filp_open(struct task_struct *tsk, int dfd,
+                                 struct filename *pathname,
+				 const struct open_flags *op);
 extern struct file *do_file_open_root(struct dentry *, struct vfsmount *,
 		const char *, const struct open_flags *);
 

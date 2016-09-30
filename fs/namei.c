@@ -3512,8 +3512,8 @@ out2:
 	return file;
 }
 
-struct file *do_filp_open(int dfd, struct filename *pathname,
-		const struct open_flags *op)
+struct file *do_filp_open(struct task_struct *tsk, int dfd,
+                          struct filename *pathname, const struct open_flags *op)
 {
 	struct nameidata nd;
 	int flags = op->lookup_flags;

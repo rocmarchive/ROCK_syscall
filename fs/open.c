@@ -975,7 +975,7 @@ struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 {
 	struct open_flags op;
 	int err = build_open_flags(flags, mode, &op);
-	return err ? ERR_PTR(err) : do_filp_open(AT_FDCWD, name, &op);
+	return err ? ERR_PTR(err) : do_filp_open(current, AT_FDCWD, name, &op);
 }
 
 /**
@@ -1049,7 +1049,7 @@ long do_sys_open(struct task_struct *tsk, int dfd, const char __user *filename,
 
 	fd = get_unused_fd_flags_task(tsk, flags);
 	if (fd >= 0) {
-		struct file *f = do_filp_open(dfd, tmp, &op);
+		struct file *f = do_filp_open(tsk, dfd, tmp, &op);
 		if (IS_ERR(f)) {
 			put_unused_fd_files(tsk->files, fd);
 			fd = PTR_ERR(f);
