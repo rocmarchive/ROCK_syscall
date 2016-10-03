@@ -875,7 +875,7 @@ struct file *dentry_open(const struct path *path, int flags,
 	/* We must always pass in a valid mount pointer. */
 	BUG_ON(!path->mnt);
 
-	f = get_empty_filp();
+	f = get_empty_filp(current);
 	if (!IS_ERR(f)) {
 		f->f_flags = flags;
 		error = vfs_open(path, f, cred);
@@ -1018,7 +1018,7 @@ struct file *filp_clone_open(struct file *oldfile)
 	struct file *file;
 	int retval;
 
-	file = get_empty_filp();
+	file = get_empty_filp(current);
 	if (IS_ERR(file))
 		return file;
 

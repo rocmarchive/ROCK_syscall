@@ -101,9 +101,9 @@ int proc_nr_files(struct ctl_table *table, int write,
  * done, you will imbalance int the mount's writer count
  * and a warning at __fput() time.
  */
-struct file *get_empty_filp(void)
+struct file *get_empty_filp(struct task_struct *tsk)
 {
-	const struct cred *cred = current_cred();
+	const struct cred *cred = get_task_cred(tsk);
 	static long old_max;
 	struct file *f;
 	int error;
@@ -111,7 +111,8 @@ struct file *get_empty_filp(void)
 	/*
 	 * Privileged users can go above max_files
 	 */
-	if (get_nr_files() >= files_stat.max_files && !capable(CAP_SYS_ADMIN)) {
+	if (get_nr_files() >= files_stat.max_files &&
+	    !has_capability_noaudit(tsk, CAP_SYS_ADMIN)) {
 		/*
 		 * percpu_counters are inaccurate.  Do an expensive check before
 		 * we go and fail.
@@ -161,7 +162,7 @@ struct file *alloc_file(const struct path *path, fmode_t mode,
 {
 	struct file *file;
 
-	file = get_empty_filp();
+	file = get_empty_filp(current);
 	if (IS_ERR(file))
 		return file;
 

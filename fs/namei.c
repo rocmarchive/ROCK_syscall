@@ -3462,7 +3462,7 @@ static struct file *path_openat(struct nameidata *nd,
 	int opened = 0;
 	int error;
 
-	file = get_empty_filp();
+	file = get_empty_filp(current);
 	if (IS_ERR(file))
 		return file;
 
