@@ -425,7 +425,7 @@ int __inode_permission(struct inode *inode, int mask)
 	if (retval)
 		return retval;
 
-	retval = devcgroup_inode_permission(inode, mask);
+	retval = devcgroup_inode_permission(current, inode, mask);
 	if (retval)
 		return retval;
 
@@ -3666,7 +3666,7 @@ int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 	if (!dir->i_op->mknod)
 		return -EPERM;
 
-	error = devcgroup_inode_mknod(mode, dev);
+	error = devcgroup_inode_mknod(current, mode, dev);
 	if (error)
 		return error;
 

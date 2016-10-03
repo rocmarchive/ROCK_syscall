@@ -809,14 +809,14 @@ struct cgroup_subsys devices_cgrp_subsys = {
  *
  * returns 0 on success, -EPERM case the operation is not permitted
  */
-static int __devcgroup_check_permission(short type, u32 major, u32 minor,
-				        short access)
+static int __devcgroup_check_permission(struct task_struct *tsk, short type,
+                                        u32 major, u32 minor, short access)
 {
 	struct dev_cgroup *dev_cgroup;
 	bool rc;
 
 	rcu_read_lock();
-	dev_cgroup = task_devcgroup(current);
+	dev_cgroup = task_devcgroup(tsk);
 	if (dev_cgroup->behavior == DEVCG_DEFAULT_ALLOW)
 		/* Can't match any of the exceptions, even partially */
 		rc = !match_exception_partial(&dev_cgroup->exceptions,
@@ -833,7 +833,8 @@ static int __devcgroup_check_permission(short type, u32 major, u32 minor,
 	return 0;
 }
 
-int __devcgroup_inode_permission(struct inode *inode, int mask)
+int __devcgroup_inode_permission(struct task_struct *tsk, struct inode *inode,
+                                 int mask)
 {
 	short type, access = 0;
 
@@ -846,11 +847,11 @@ int __devcgroup_inode_permission(struct inode *inode, int mask)
 	if (mask & MAY_READ)
 		access |= ACC_READ;
 
-	return __devcgroup_check_permission(type, imajor(inode), iminor(inode),
+	return __devcgroup_check_permission(tsk, type, imajor(inode), iminor(inode),
 			access);
 }
 
-int devcgroup_inode_mknod(int mode, dev_t dev)
+int devcgroup_inode_mknod(struct task_struct *tsk, int mode, dev_t dev)
 {
 	short type;
 
@@ -862,7 +863,7 @@ int devcgroup_inode_mknod(int mode, dev_t dev)
 	else
 		type = DEV_CHAR;
 
-	return __devcgroup_check_permission(type, MAJOR(dev), MINOR(dev),
+	return __devcgroup_check_permission(tsk, type, MAJOR(dev), MINOR(dev),
 			ACC_MKNOD);
 
 }
