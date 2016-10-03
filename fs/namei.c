@@ -257,7 +257,7 @@ void putname(struct filename *name)
 		__putname(name);
 }
 
-static int check_acl(struct inode *inode, int mask)
+static int check_acl(struct task_struct *tsk, struct inode *inode, int mask)
 {
 #ifdef CONFIG_FS_POSIX_ACL
 	struct posix_acl *acl;
@@ -269,14 +269,14 @@ static int check_acl(struct inode *inode, int mask)
 		/* no ->get_acl() calls in RCU mode... */
 		if (is_uncached_acl(acl))
 			return -ECHILD;
-	        return posix_acl_permission(current, inode, acl, mask & ~MAY_NOT_BLOCK);
+	        return posix_acl_permission(tsk, inode, acl, mask & ~MAY_NOT_BLOCK);
 	}
 
 	acl = get_acl(inode, ACL_TYPE_ACCESS);
 	if (IS_ERR(acl))
 		return PTR_ERR(acl);
 	if (acl) {
-	        int error = posix_acl_permission(current, inode, acl, mask);
+	        int error = posix_acl_permission(tsk, inode, acl, mask);
 	        posix_acl_release(acl);
 	        return error;
 	}
@@ -288,20 +288,21 @@ static int check_acl(struct inode *inode, int mask)
 /*
  * This does the basic permission checking
  */
-static int acl_permission_check(struct inode *inode, int mask)
+static int acl_permission_check(struct task_struct *tsk, struct inode *inode,
+                                int mask)
 {
 	unsigned int mode = inode->i_mode;
 
-	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
+	if (likely(uid_eq(task_fsuid(tsk), inode->i_uid)))
 		mode >>= 6;
 	else {
 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
-			int error = check_acl(inode, mask);
+			int error = check_acl(tsk, inode, mask);
 			if (error != -EAGAIN)
 				return error;
 		}
 
-		if (in_group_p(inode->i_gid))
+		if (in_group_p_task(tsk, inode->i_gid))
 			mode >>= 3;
 	}
 
@@ -334,7 +335,7 @@ int generic_permission(struct inode *inode, int mask)
 	/*
 	 * Do the basic permission checks.
 	 */
-	ret = acl_permission_check(inode, mask);
+	ret = acl_permission_check(current, inode, mask);
 	if (ret != -EACCES)
 		return ret;
 
