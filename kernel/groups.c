@@ -238,6 +238,21 @@ int in_group_p(kgid_t grp)
 }
 
 EXPORT_SYMBOL(in_group_p);
+/*
+ * Check whether task is fsgid/egid or in the supplemental group..
+ */
+int in_group_p_task(struct task_struct *tsk, kgid_t grp)
+{
+	const struct cred *cred = get_task_cred(tsk);
+	int retval = 1;
+
+	if (!gid_eq(grp, cred->fsgid))
+		retval = groups_search(cred->group_info, grp);
+	put_cred(cred);
+	return retval;
+}
+
+EXPORT_SYMBOL(in_group_p_task);
 
 int in_egroup_p(kgid_t grp)
 {

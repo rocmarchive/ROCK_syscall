@@ -64,12 +64,17 @@ extern struct group_info *groups_alloc(int);
 extern void groups_free(struct group_info *);
 
 extern int in_group_p(kgid_t);
+extern int in_group_p_task(struct task_struct *, kgid_t);
 extern int in_egroup_p(kgid_t);
 #else
 static inline void groups_free(struct group_info *group_info)
 {
 }
 
+static inline  int in_group_p_task(struct task_struct *, kgid_t)
+{
+	return 1;
+}
 static inline int in_group_p(kgid_t grp)
 {
         return 1;
