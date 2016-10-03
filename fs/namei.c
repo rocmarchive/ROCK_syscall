@@ -3456,7 +3456,7 @@ static int do_o_path(struct nameidata *nd, unsigned flags, struct file *file)
 	return error;
 }
 
-static struct file *path_openat(struct nameidata *nd,
+static struct file *path_openat(struct task_struct *tsk, struct nameidata *nd,
 			const struct open_flags *op, unsigned flags)
 {
 	const char *s;
@@ -3464,7 +3464,7 @@ static struct file *path_openat(struct nameidata *nd,
 	int opened = 0;
 	int error;
 
-	file = get_empty_filp(current);
+	file = get_empty_filp(tsk);
 	if (IS_ERR(file))
 		return file;
 
@@ -3523,11 +3523,11 @@ struct file *do_filp_open(struct task_struct *tsk, int dfd,
 
 	/* TODO: should this prevent acessing current? */
 	set_nameidata(&nd, dfd, pathname);
-	filp = path_openat(&nd, op, flags | LOOKUP_RCU);
+	filp = path_openat(tsk, &nd, op, flags | LOOKUP_RCU);
 	if (unlikely(filp == ERR_PTR(-ECHILD)))
-		filp = path_openat(&nd, op, flags);
+		filp = path_openat(tsk, &nd, op, flags);
 	if (unlikely(filp == ERR_PTR(-ESTALE)))
-		filp = path_openat(&nd, op, flags | LOOKUP_REVAL);
+		filp = path_openat(tsk, &nd, op, flags | LOOKUP_REVAL);
 	restore_nameidata();
 	return filp;
 }
@@ -3551,11 +3551,11 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
 		return ERR_CAST(filename);
 
 	set_nameidata(&nd, -1, filename);
-	file = path_openat(&nd, op, flags | LOOKUP_RCU);
+	file = path_openat(current, &nd, op, flags | LOOKUP_RCU);
 	if (unlikely(file == ERR_PTR(-ECHILD)))
-		file = path_openat(&nd, op, flags);
+		file = path_openat(current, &nd, op, flags);
 	if (unlikely(file == ERR_PTR(-ESTALE)))
-		file = path_openat(&nd, op, flags | LOOKUP_REVAL);
+		file = path_openat(current, &nd, op, flags | LOOKUP_REVAL);
 	restore_nameidata();
 	putname(filename);
 	return file;
