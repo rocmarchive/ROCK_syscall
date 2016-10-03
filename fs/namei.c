@@ -3368,7 +3368,8 @@ out:
 	return error;
 }
 
-struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode, int open_flag)
+struct dentry *vfs_tmpfile(struct task_struct *tsk, struct dentry *dentry,
+                           umode_t mode, int open_flag)
 {
 	static const struct qstr name = QSTR_INIT("/", 1);
 	struct dentry *child = NULL;
@@ -3377,7 +3378,7 @@ struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode, int open_flag)
 	int error;
 
 	/* we want directory to be writable */
-	error = inode_permission(current, dir, MAY_WRITE | MAY_EXEC);
+	error = inode_permission(tsk, dir, MAY_WRITE | MAY_EXEC);
 	if (error)
 		goto out_err;
 	error = -EOPNOTSUPP;
@@ -3407,8 +3408,8 @@ out_err:
 }
 EXPORT_SYMBOL(vfs_tmpfile);
 
-static int do_tmpfile(struct nameidata *nd, unsigned flags,
-		const struct open_flags *op,
+static int do_tmpfile(struct task_struct *tsk, struct nameidata *nd,
+		unsigned flags,	const struct open_flags *op,
 		struct file *file, int *opened)
 {
 	struct dentry *child;
@@ -3419,7 +3420,7 @@ static int do_tmpfile(struct nameidata *nd, unsigned flags,
 	error = mnt_want_write(path.mnt);
 	if (unlikely(error))
 		goto out;
-	child = vfs_tmpfile(path.dentry, op->mode, op->open_flag);
+	child = vfs_tmpfile(tsk, path.dentry, op->mode, op->open_flag);
 	error = PTR_ERR(child);
 	if (unlikely(IS_ERR(child)))
 		goto out2;
@@ -3471,7 +3472,7 @@ static struct file *path_openat(struct task_struct *tsk, struct nameidata *nd,
 	file->f_flags = op->open_flag;
 
 	if (unlikely(file->f_flags & __O_TMPFILE)) {
-		error = do_tmpfile(nd, flags, op, file, &opened);
+		error = do_tmpfile(tsk, nd, flags, op, file, &opened);
 		goto out2;
 	}
 
