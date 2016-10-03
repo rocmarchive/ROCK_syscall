@@ -2261,7 +2261,7 @@ static inline int lookup_last(struct nameidata *nd)
 }
 
 /* Returns 0 and nd will be valid on success; Retuns error, otherwise. */
-static int path_lookupat(struct nameidata *nd, unsigned flags, struct path *path)
+static int path_lookupat(struct task_struct *tsk, struct nameidata *nd, unsigned flags, struct path *path)
 {
 	const char *s = path_init(nd, flags);
 	int err;
@@ -2303,11 +2303,11 @@ static int filename_lookup(int dfd, struct filename *name, unsigned flags,
 		flags |= LOOKUP_ROOT;
 	}
 	set_nameidata(&nd, dfd, name);
-	retval = path_lookupat(&nd, flags | LOOKUP_RCU, path);
+	retval = path_lookupat(current, &nd, flags | LOOKUP_RCU, path);
 	if (unlikely(retval == -ECHILD))
-		retval = path_lookupat(&nd, flags, path);
+		retval = path_lookupat(current, &nd, flags, path);
 	if (unlikely(retval == -ESTALE))
-		retval = path_lookupat(&nd, flags | LOOKUP_REVAL, path);
+		retval = path_lookupat(current, &nd, flags | LOOKUP_REVAL, path);
 
 	if (likely(!retval))
 		audit_inode(name, path->dentry, flags & LOOKUP_PARENT);
@@ -3414,7 +3414,7 @@ static int do_tmpfile(struct task_struct *tsk, struct nameidata *nd,
 {
 	struct dentry *child;
 	struct path path;
-	int error = path_lookupat(nd, flags | LOOKUP_DIRECTORY, &path);
+	int error = path_lookupat(tsk, nd, flags | LOOKUP_DIRECTORY, &path);
 	if (unlikely(error))
 		return error;
 	error = mnt_want_write(path.mnt);
@@ -3445,10 +3445,11 @@ out:
 	return error;
 }
 
-static int do_o_path(struct nameidata *nd, unsigned flags, struct file *file)
+static int do_o_path(struct task_struct *tsk, struct nameidata *nd,
+		unsigned flags, struct file *file)
 {
 	struct path path;
-	int error = path_lookupat(nd, flags, &path);
+	int error = path_lookupat(tsk, nd, flags, &path);
 	if (!error) {
 		audit_inode(nd->name, path.dentry, 0);
 		error = vfs_open(&path, file, current_cred());
@@ -3477,7 +3478,7 @@ static struct file *path_openat(struct task_struct *tsk, struct nameidata *nd,
 	}
 
 	if (unlikely(file->f_flags & O_PATH)) {
-		error = do_o_path(nd, flags, file);
+		error = do_o_path(tsk, nd, flags, file);
 		if (!error)
 			opened |= FILE_OPENED;
 		goto out2;
