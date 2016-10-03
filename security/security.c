@@ -640,11 +640,11 @@ int security_inode_follow_link(struct dentry *dentry, struct inode *inode,
 	return call_int_hook(inode_follow_link, 0, dentry, inode, rcu);
 }
 
-int security_inode_permission(struct inode *inode, int mask)
+int security_inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	if (unlikely(IS_PRIVATE(inode)))
 		return 0;
-	return call_int_hook(inode_permission, 0, inode, mask);
+	return call_int_hook(inode_permission, 0, tsk, inode, mask);
 }
 
 int security_inode_setattr(struct dentry *dentry, struct iattr *attr)

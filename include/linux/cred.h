@@ -357,6 +357,7 @@ static inline void put_cred(const struct cred *_cred)
 #define task_euid(task)		(task_cred_xxx((task), euid))
 #define task_fsuid(task)	(task_cred_xxx((task), fsuid))
 #define task_fsgid(task)	(task_cred_xxx((task), fsgid))
+#define task_security(task)	(task_cred_xxx((task), security))
 
 #define current_cred_xxx(xxx)			\
 ({						\

@@ -2993,7 +2993,7 @@ static int selinux_inode_follow_link(struct dentry *dentry, struct inode *inode,
 				  rcu ? MAY_NOT_BLOCK : 0);
 }
 
-static noinline int audit_inode_permission(struct inode *inode,
+static noinline int audit_inode_permission(u32 sid, struct inode *inode,
 					   u32 perms, u32 audited, u32 denied,
 					   int result,
 					   unsigned flags)
@@ -3005,16 +3005,16 @@ static noinline int audit_inode_permission(struct inode *inode,
 	ad.type = LSM_AUDIT_DATA_INODE;
 	ad.u.inode = inode;
 
-	rc = slow_avc_audit(current_sid(), isec->sid, isec->sclass, perms,
+	rc = slow_avc_audit(sid, isec->sid, isec->sclass, perms,
 			    audited, denied, result, &ad, flags);
 	if (rc)
 		return rc;
 	return 0;
 }
 
-static int selinux_inode_permission(struct inode *inode, int mask)
+static int selinux_inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
-	const struct cred *cred = current_cred();
+	const struct cred *cred;
 	u32 perms;
 	bool from_access;
 	unsigned flags = mask & MAY_NOT_BLOCK;
@@ -3031,10 +3031,13 @@ static int selinux_inode_permission(struct inode *inode, int mask)
 	if (!mask)
 		return 0;
 
+	cred = get_task_cred(tsk);
 	validate_creds(cred);
 
-	if (unlikely(IS_PRIVATE(inode)))
+	if (unlikely(IS_PRIVATE(inode))) {
+		put_cred(cred);
 		return 0;
+	}
 
 	perms = file_mask_to_av(inode->i_mode, mask);
 
@@ -3047,10 +3050,13 @@ static int selinux_inode_permission(struct inode *inode, int mask)
 	audited = avc_audit_required(perms, &avd, rc,
 				     from_access ? FILE__AUDIT_ACCESS : 0,
 				     &denied);
-	if (likely(!audited))
+	if (likely(!audited)) {
+		put_cred(cred);
 		return rc;
+	}
 
-	rc2 = audit_inode_permission(inode, perms, audited, denied, rc, flags);
+	rc2 = audit_inode_permission(sid, inode, perms, audited, denied, rc, flags);
+	put_cred(cred);
 	if (rc2)
 		return rc2;
 	return rc;

@@ -162,15 +162,15 @@ static int smk_bu_task(struct task_struct *otp, int mode, int rc)
 #endif
 
 #ifdef CONFIG_SECURITY_SMACK_BRINGUP
-static int smk_bu_inode(struct inode *inode, int mode, int rc)
+static int smk_bu_inode(struct task_struct *tsk, struct inode *inode, int mode, int rc)
 {
-	struct task_smack *tsp = current_security();
 	struct inode_smack *isp = inode->i_security;
 	char acc[SMK_NUM_ACCESS_TYPE + 1];
+	struct task_smack *tsp = task_security(tsk);
 
 	if (isp->smk_flags & SMK_INODE_IMPURE)
 		pr_info("Smack Unconfined Corruption: inode=(%s %ld) %s\n",
-			inode->i_sb->s_id, inode->i_ino, current->comm);
+			inode->i_sb->s_id, inode->i_ino, tsk->comm);
 
 	if (rc <= 0)
 		return rc;
@@ -184,11 +184,11 @@ static int smk_bu_inode(struct inode *inode, int mode, int rc)
 
 	pr_info("Smack %s: (%s %s %s) inode=(%s %ld) %s\n", smk_bu_mess[rc],
 		tsp->smk_task->smk_known, isp->smk_inode->smk_known, acc,
-		inode->i_sb->s_id, inode->i_ino, current->comm);
+		inode->i_sb->s_id, inode->i_ino, tsk->comm);
 	return 0;
 }
 #else
-#define smk_bu_inode(inode, mode, RC) (RC)
+#define smk_bu_inode(tsk, inode, mode, RC) (RC)
 #endif
 
 #ifdef CONFIG_SECURITY_SMACK_BRINGUP
@@ -1113,13 +1113,13 @@ static int smack_inode_link(struct dentry *old_dentry, struct inode *dir,
 
 	isp = smk_of_inode(d_backing_inode(old_dentry));
 	rc = smk_curacc(isp, MAY_WRITE, &ad);
-	rc = smk_bu_inode(d_backing_inode(old_dentry), MAY_WRITE, rc);
+	rc = smk_bu_inode(current, d_backing_inode(old_dentry), MAY_WRITE, rc);
 
 	if (rc == 0 && d_is_positive(new_dentry)) {
 		isp = smk_of_inode(d_backing_inode(new_dentry));
 		smk_ad_setfield_u_fs_path_dentry(&ad, new_dentry);
 		rc = smk_curacc(isp, MAY_WRITE, &ad);
-		rc = smk_bu_inode(d_backing_inode(new_dentry), MAY_WRITE, rc);
+		rc = smk_bu_inode(current, d_backing_inode(new_dentry), MAY_WRITE, rc);
 	}
 
 	return rc;
@@ -1146,7 +1146,7 @@ static int smack_inode_unlink(struct inode *dir, struct dentry *dentry)
 	 * You need write access to the thing you're unlinking
 	 */
 	rc = smk_curacc(smk_of_inode(ip), MAY_WRITE, &ad);
-	rc = smk_bu_inode(ip, MAY_WRITE, rc);
+	rc = smk_bu_inode(current, ip, MAY_WRITE, rc);
 	if (rc == 0) {
 		/*
 		 * You also need write access to the containing directory
@@ -1154,7 +1154,7 @@ static int smack_inode_unlink(struct inode *dir, struct dentry *dentry)
 		smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_INODE);
 		smk_ad_setfield_u_fs_inode(&ad, dir);
 		rc = smk_curacc(smk_of_inode(dir), MAY_WRITE, &ad);
-		rc = smk_bu_inode(dir, MAY_WRITE, rc);
+		rc = smk_bu_inode(current, dir, MAY_WRITE, rc);
 	}
 	return rc;
 }
@@ -1179,7 +1179,7 @@ static int smack_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	 * You need write access to the thing you're removing
 	 */
 	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_WRITE, &ad);
-	rc = smk_bu_inode(d_backing_inode(dentry), MAY_WRITE, rc);
+	rc = smk_bu_inode(current, d_backing_inode(dentry), MAY_WRITE, rc);
 	if (rc == 0) {
 		/*
 		 * You also need write access to the containing directory
@@ -1187,7 +1187,7 @@ static int smack_inode_rmdir(struct inode *dir, struct dentry *dentry)
 		smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_INODE);
 		smk_ad_setfield_u_fs_inode(&ad, dir);
 		rc = smk_curacc(smk_of_inode(dir), MAY_WRITE, &ad);
-		rc = smk_bu_inode(dir, MAY_WRITE, rc);
+		rc = smk_bu_inode(current, dir, MAY_WRITE, rc);
 	}
 
 	return rc;
@@ -1219,13 +1219,13 @@ static int smack_inode_rename(struct inode *old_inode,
 
 	isp = smk_of_inode(d_backing_inode(old_dentry));
 	rc = smk_curacc(isp, MAY_READWRITE, &ad);
-	rc = smk_bu_inode(d_backing_inode(old_dentry), MAY_READWRITE, rc);
+	rc = smk_bu_inode(current, d_backing_inode(old_dentry), MAY_READWRITE, rc);
 
 	if (rc == 0 && d_is_positive(new_dentry)) {
 		isp = smk_of_inode(d_backing_inode(new_dentry));
 		smk_ad_setfield_u_fs_path_dentry(&ad, new_dentry);
 		rc = smk_curacc(isp, MAY_READWRITE, &ad);
-		rc = smk_bu_inode(d_backing_inode(new_dentry), MAY_READWRITE, rc);
+		rc = smk_bu_inode(current, d_backing_inode(new_dentry), MAY_READWRITE, rc);
 	}
 	return rc;
 }
@@ -1239,7 +1239,7 @@ static int smack_inode_rename(struct inode *old_inode,
  *
  * Returns 0 if access is permitted, -EACCES otherwise
  */
-static int smack_inode_permission(struct inode *inode, int mask)
+static int smack_inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	struct superblock_smack *sbsp = inode->i_sb->s_security;
 	struct smk_audit_info ad;
@@ -1263,8 +1263,8 @@ static int smack_inode_permission(struct inode *inode, int mask)
 		return -ECHILD;
 	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_INODE);
 	smk_ad_setfield_u_fs_inode(&ad, inode);
-	rc = smk_curacc(smk_of_inode(inode), mask, &ad);
-	rc = smk_bu_inode(inode, mask, rc);
+	rc = smk_tskacc(task_security(tsk), smk_of_inode(inode), mask, &ad);
+	rc = smk_bu_inode(tsk, inode, mask, rc);
 	return rc;
 }
 
@@ -1289,7 +1289,7 @@ static int smack_inode_setattr(struct dentry *dentry, struct iattr *iattr)
 	smk_ad_setfield_u_fs_path_dentry(&ad, dentry);
 
 	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_WRITE, &ad);
-	rc = smk_bu_inode(d_backing_inode(dentry), MAY_WRITE, rc);
+	rc = smk_bu_inode(current_security(), d_backing_inode(dentry), MAY_WRITE, rc);
 	return rc;
 }
 
@@ -1309,7 +1309,7 @@ static int smack_inode_getattr(const struct path *path)
 	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_PATH);
 	smk_ad_setfield_u_fs_path(&ad, *path);
 	rc = smk_curacc(smk_of_inode(inode), MAY_READ, &ad);
-	rc = smk_bu_inode(inode, MAY_READ, rc);
+	rc = smk_bu_inode(current_security(), inode, MAY_READ, rc);
 	return rc;
 }
 
@@ -1373,7 +1373,7 @@ static int smack_inode_setxattr(struct dentry *dentry, const char *name,
 
 	if (rc == 0) {
 		rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_WRITE, &ad);
-		rc = smk_bu_inode(d_backing_inode(dentry), MAY_WRITE, rc);
+		rc = smk_bu_inode(current_security(), d_backing_inode(dentry), MAY_WRITE, rc);
 	}
 
 	return rc;
@@ -1434,7 +1434,7 @@ static int smack_inode_getxattr(struct dentry *dentry, const char *name)
 	smk_ad_setfield_u_fs_path_dentry(&ad, dentry);
 
 	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_READ, &ad);
-	rc = smk_bu_inode(d_backing_inode(dentry), MAY_READ, rc);
+	rc = smk_bu_inode(current_security(), d_backing_inode(dentry), MAY_READ, rc);
 	return rc;
 }
 
@@ -1471,7 +1471,7 @@ static int smack_inode_removexattr(struct dentry *dentry, const char *name)
 	smk_ad_setfield_u_fs_path_dentry(&ad, dentry);
 
 	rc = smk_curacc(smk_of_inode(d_backing_inode(dentry)), MAY_WRITE, &ad);
-	rc = smk_bu_inode(d_backing_inode(dentry), MAY_WRITE, rc);
+	rc = smk_bu_inode(current_security(), d_backing_inode(dentry), MAY_WRITE, rc);
 	if (rc != 0)
 		return rc;
 

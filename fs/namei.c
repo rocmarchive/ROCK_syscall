@@ -431,7 +431,7 @@ int __inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 	if (retval)
 		return retval;
 
-	return security_inode_permission(inode, mask);
+	return security_inode_permission(tsk, inode, mask);
 }
 EXPORT_SYMBOL(__inode_permission);
 

@@ -1429,7 +1429,7 @@ union security_list_options {
 	int (*inode_readlink)(struct dentry *dentry);
 	int (*inode_follow_link)(struct dentry *dentry, struct inode *inode,
 				 bool rcu);
-	int (*inode_permission)(struct inode *inode, int mask);
+	int (*inode_permission)(struct task_struct *tsk, struct inode *inode, int mask);
 	int (*inode_setattr)(struct dentry *dentry, struct iattr *attr);
 	int (*inode_getattr)(const struct path *path);
 	int (*inode_setxattr)(struct dentry *dentry, const char *name,
