@@ -47,6 +47,7 @@ extern struct file *fget_raw(unsigned int fd);
 extern unsigned long __fdget(unsigned int fd);
 extern unsigned long __fdget_task(unsigned int fd, struct task_struct *t);
 extern unsigned long __fdget_raw(unsigned int fd);
+extern unsigned long __fdget_task_raw(unsigned int fd, struct task_struct *t);
 extern unsigned long __fdget_pos(unsigned int fd);
 extern unsigned long __fdget_pos_task(unsigned int fd, struct task_struct *t);
 extern void __f_unlock_pos(struct file *);
@@ -68,6 +69,11 @@ static inline struct fd fdget_task(unsigned int fd, struct task_struct *t)
 static inline struct fd fdget_raw(unsigned int fd)
 {
 	return __to_fd(__fdget_raw(fd));
+}
+
+static inline struct fd fdget_task_raw(unsigned int fd, struct task_struct *t)
+{
+	return __to_fd(__fdget_task_raw(fd, t));
 }
 
 static inline struct fd fdget_pos(int fd)

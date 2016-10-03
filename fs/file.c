@@ -789,6 +789,11 @@ unsigned long __fdget_task(unsigned int fd, struct task_struct *t)
 }
 EXPORT_SYMBOL(__fdget_task);
 
+unsigned long __fdget_task_raw(unsigned int fd, struct task_struct *t)
+{
+	return __fget_light(fd, 0, t);
+}
+
 unsigned long __fdget_raw(unsigned int fd)
 {
 	return __fget_light(fd, 0, current);

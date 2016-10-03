@@ -2142,7 +2142,7 @@ OK:
 	}
 }
 
-static const char *path_init(struct nameidata *nd, unsigned flags)
+static const char *path_init(struct task_struct *tsk, struct nameidata *nd, unsigned flags)
 {
 	int retval = 0;
 	const char *s = nd->name->name;
@@ -2159,7 +2159,7 @@ static const char *path_init(struct nameidata *nd, unsigned flags)
 		if (*s) {
 			if (!d_can_lookup(root))
 				return ERR_PTR(-ENOTDIR);
-			retval = inode_permission(current, inode, MAY_EXEC);
+			retval = inode_permission(tsk, inode, MAY_EXEC);
 			if (retval)
 				return ERR_PTR(retval);
 		}
@@ -2192,7 +2192,7 @@ static const char *path_init(struct nameidata *nd, unsigned flags)
 		return ERR_PTR(-ECHILD);
 	} else if (nd->dfd == AT_FDCWD) {
 		if (flags & LOOKUP_RCU) {
-			struct fs_struct *fs = current->fs;
+			struct fs_struct *fs = tsk->fs;
 			unsigned seq;
 
 			rcu_read_lock();
@@ -2204,13 +2204,13 @@ static const char *path_init(struct nameidata *nd, unsigned flags)
 				nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
 			} while (read_seqcount_retry(&fs->seq, seq));
 		} else {
-			get_fs_pwd(current->fs, &nd->path);
+			get_fs_pwd(tsk->fs, &nd->path);
 			nd->inode = nd->path.dentry->d_inode;
 		}
 		return s;
 	} else {
 		/* Caller must check execute permissions on the starting path component */
-		struct fd f = fdget_raw(nd->dfd);
+		struct fd f = fdget_task_raw(nd->dfd, tsk);
 		struct dentry *dentry;
 
 		if (!f.file)
@@ -2263,7 +2263,7 @@ static inline int lookup_last(struct nameidata *nd)
 /* Returns 0 and nd will be valid on success; Retuns error, otherwise. */
 static int path_lookupat(struct task_struct *tsk, struct nameidata *nd, unsigned flags, struct path *path)
 {
-	const char *s = path_init(nd, flags);
+	const char *s = path_init(tsk, nd, flags);
 	int err;
 
 	if (IS_ERR(s))
@@ -2320,7 +2320,7 @@ static int filename_lookup(int dfd, struct filename *name, unsigned flags,
 static int path_parentat(struct nameidata *nd, unsigned flags,
 				struct path *parent)
 {
-	const char *s = path_init(nd, flags);
+	const char *s = path_init(current, nd, flags);
 	int err;
 	if (IS_ERR(s))
 		return PTR_ERR(s);
@@ -2640,7 +2640,7 @@ mountpoint_last(struct nameidata *nd)
 static int
 path_mountpoint(struct nameidata *nd, unsigned flags, struct path *path)
 {
-	const char *s = path_init(nd, flags);
+	const char *s = path_init(current, nd, flags);
 	int err;
 	if (IS_ERR(s))
 		return PTR_ERR(s);
@@ -3484,7 +3484,7 @@ static struct file *path_openat(struct task_struct *tsk, struct nameidata *nd,
 		goto out2;
 	}
 
-	s = path_init(nd, flags);
+	s = path_init(tsk, nd, flags);
 	if (IS_ERR(s)) {
 		put_filp(file);
 		return ERR_CAST(s);
