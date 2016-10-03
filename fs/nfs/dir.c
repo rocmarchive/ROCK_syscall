@@ -2512,7 +2512,7 @@ static int nfs_execute_ok(struct inode *inode, int mask)
 	return ret;
 }
 
-int nfs_permission(struct inode *inode, int mask)
+int nfs_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	struct rpc_cred *cred;
 	int res = 0;
@@ -2576,7 +2576,7 @@ out_notsup:
 
 	res = nfs_revalidate_inode(NFS_SERVER(inode), inode);
 	if (res == 0)
-		res = generic_permission(inode, mask);
+		res = generic_permission(tsk, inode, mask);
 	goto out;
 }
 EXPORT_SYMBOL_GPL(nfs_permission);

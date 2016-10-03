@@ -693,7 +693,7 @@ static bool has_pid_permissions(struct pid_namespace *pid,
 }
 
 
-static int proc_pid_permission(struct inode *inode, int mask)
+static int proc_pid_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	struct pid_namespace *pid = inode->i_sb->s_fs_info;
 	struct task_struct *task;
@@ -702,6 +702,7 @@ static int proc_pid_permission(struct inode *inode, int mask)
 	task = get_proc_task(inode);
 	if (!task)
 		return -ESRCH;
+	//TODO: this still check current
 	has_perms = has_pid_permissions(pid, task, HIDEPID_NO_ACCESS);
 	put_task_struct(task);
 
@@ -718,7 +719,7 @@ static int proc_pid_permission(struct inode *inode, int mask)
 
 		return -EPERM;
 	}
-	return generic_permission(inode, mask);
+	return generic_permission(tsk, inode, mask);
 }
 
 
@@ -3201,7 +3202,8 @@ int proc_pid_readdir(struct file *file, struct dir_context *ctx)
  * This function makes sure that the node is always accessible for members of
  * same thread group.
  */
-static int proc_tid_comm_permission(struct inode *inode, int mask)
+static int proc_tid_comm_permission(struct task_struct *tsk,
+		struct inode *inode, int mask)
 {
 	bool is_same_tgroup;
 	struct task_struct *task;
@@ -3209,7 +3211,7 @@ static int proc_tid_comm_permission(struct inode *inode, int mask)
 	task = get_proc_task(inode);
 	if (!task)
 		return -ESRCH;
-	is_same_tgroup = same_thread_group(current, task);
+	is_same_tgroup = same_thread_group(tsk, task);
 	put_task_struct(task);
 
 	if (likely(is_same_tgroup && !(mask & MAY_EXEC))) {
@@ -3220,7 +3222,7 @@ static int proc_tid_comm_permission(struct inode *inode, int mask)
 		return 0;
 	}
 
-	return generic_permission(inode, mask);
+	return generic_permission(tsk, inode, mask);
 }
 
 static const struct inode_operations proc_tid_comm_inode_operations = {

@@ -72,7 +72,7 @@ static int ovl_getattr(const struct path *path, struct kstat *stat,
 	return err;
 }
 
-int ovl_permission(struct inode *inode, int mask)
+int ovl_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	bool is_upper;
 	struct inode *realinode = ovl_inode_real(inode, &is_upper);
@@ -89,7 +89,7 @@ int ovl_permission(struct inode *inode, int mask)
 	 * Check overlay inode with the creds of task and underlying inode
 	 * with creds of mounter
 	 */
-	err = generic_permission(inode, mask);
+	err = generic_permission(tsk, inode, mask);
 	if (err)
 		return err;
 
@@ -99,7 +99,7 @@ int ovl_permission(struct inode *inode, int mask)
 		/* Make sure mounter can read file for copy up later */
 		mask |= MAY_READ;
 	}
-	err = inode_permission(realinode, mask);
+	err = inode_permission(tsk, realinode, mask);
 	revert_creds(old_cred);
 
 	return err;

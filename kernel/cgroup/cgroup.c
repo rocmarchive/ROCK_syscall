@@ -2367,7 +2367,7 @@ static int cgroup_procs_write_permission(struct task_struct *task,
 		ret = -ENOMEM;
 		inode = kernfs_get_inode(sb, cgrp->procs_file.kn);
 		if (inode) {
-			ret = inode_permission(inode, MAY_WRITE);
+			ret = inode_permission(current, inode, MAY_WRITE);
 			iput(inode);
 		}
 	} else {

@@ -288,7 +288,7 @@ void kernfs_evict_inode(struct inode *inode)
 	kernfs_put(kn);
 }
 
-int kernfs_iop_permission(struct inode *inode, int mask)
+int kernfs_iop_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	struct kernfs_node *kn;
 
@@ -301,7 +301,7 @@ int kernfs_iop_permission(struct inode *inode, int mask)
 	kernfs_refresh_inode(kn, inode);
 	mutex_unlock(&kernfs_mutex);
 
-	return generic_permission(inode, mask);
+	return generic_permission(tsk, inode, mask);
 }
 
 static int kernfs_xattr_get(const struct xattr_handler *handler,

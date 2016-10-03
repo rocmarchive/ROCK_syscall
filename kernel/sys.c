@@ -1679,7 +1679,7 @@ static int prctl_set_mm_exe_file(struct mm_struct *mm, unsigned int fd)
 	if (!S_ISREG(inode->i_mode) || path_noexec(&exe.file->f_path))
 		goto exit;
 
-	err = inode_permission(inode, MAY_EXEC);
+	err = inode_permission(current, inode, MAY_EXEC);
 	if (err)
 		goto exit;
 

@@ -84,7 +84,7 @@ static int bad_inode_readlink(struct dentry *dentry, char __user *buffer,
 	return -EIO;
 }
 
-static int bad_inode_permission(struct inode *inode, int mask)
+static int bad_inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	return -EIO;
 }

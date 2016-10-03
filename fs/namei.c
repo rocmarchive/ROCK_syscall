@@ -328,14 +328,14 @@ static int acl_permission_check(struct task_struct *tsk, struct inode *inode,
  * request cannot be satisfied (eg. requires blocking or too much complexity).
  * It would then be called again in ref-walk mode.
  */
-int generic_permission(struct inode *inode, int mask)
+int generic_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	int ret;
 
 	/*
 	 * Do the basic permission checks.
 	 */
-	ret = acl_permission_check(current, inode, mask);
+	ret = acl_permission_check(tsk, inode, mask);
 	if (ret != -EACCES)
 		return ret;
 
@@ -376,18 +376,19 @@ EXPORT_SYMBOL(generic_permission);
  * flag in inode->i_opflags, that says "this has not special
  * permission function, use the fast case".
  */
-static inline int do_inode_permission(struct inode *inode, int mask)
+static inline int do_inode_permission(struct task_struct *tsk,
+                                      struct inode *inode, int mask)
 {
 	if (unlikely(!(inode->i_opflags & IOP_FASTPERM))) {
 		if (likely(inode->i_op->permission))
-			return inode->i_op->permission(inode, mask);
+			return inode->i_op->permission(tsk, inode, mask);
 
 		/* This gets set once for the inode lifetime */
 		spin_lock(&inode->i_lock);
 		inode->i_opflags |= IOP_FASTPERM;
 		spin_unlock(&inode->i_lock);
 	}
-	return generic_permission(inode, mask);
+	return generic_permission(tsk, inode, mask);
 }
 
 /**
@@ -402,7 +403,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
  * This does not check for a read-only file system.  You probably want
  * inode_permission().
  */
-int __inode_permission(struct inode *inode, int mask)
+int __inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	int retval;
 
@@ -422,11 +423,11 @@ int __inode_permission(struct inode *inode, int mask)
 			return -EACCES;
 	}
 
-	retval = do_inode_permission(inode, mask);
+	retval = do_inode_permission(tsk, inode, mask);
 	if (retval)
 		return retval;
 
-	retval = devcgroup_inode_permission(current, inode, mask);
+	retval = devcgroup_inode_permission(tsk, inode, mask);
 	if (retval)
 		return retval;
 
@@ -466,14 +467,14 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
  *
  * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
  */
-int inode_permission(struct inode *inode, int mask)
+int inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	int retval;
 
 	retval = sb_permission(inode->i_sb, inode, mask);
 	if (retval)
 		return retval;
-	return __inode_permission(inode, mask);
+	return __inode_permission(tsk, inode, mask);
 }
 EXPORT_SYMBOL(inode_permission);
 
@@ -979,7 +980,7 @@ static bool safe_hardlink_source(struct inode *inode)
 		return false;
 
 	/* Hardlinking to unreadable or unwritable sources is dangerous. */
-	if (inode_permission(inode, MAY_READ | MAY_WRITE))
+	if (inode_permission(current, inode, MAY_READ | MAY_WRITE))
 		return false;
 
 	return true;
@@ -1668,13 +1669,13 @@ out:
 static inline int may_lookup(struct nameidata *nd)
 {
 	if (nd->flags & LOOKUP_RCU) {
-		int err = inode_permission(nd->inode, MAY_EXEC|MAY_NOT_BLOCK);
+		int err = inode_permission(current, nd->inode, MAY_EXEC|MAY_NOT_BLOCK);
 		if (err != -ECHILD)
 			return err;
 		if (unlazy_walk(nd))
 			return -ECHILD;
 	}
-	return inode_permission(nd->inode, MAY_EXEC);
+	return inode_permission(current, nd->inode, MAY_EXEC);
 }
 
 static inline int handle_dots(struct nameidata *nd, int type)
@@ -2158,7 +2159,7 @@ static const char *path_init(struct nameidata *nd, unsigned flags)
 		if (*s) {
 			if (!d_can_lookup(root))
 				return ERR_PTR(-ENOTDIR);
-			retval = inode_permission(inode, MAY_EXEC);
+			retval = inode_permission(current, inode, MAY_EXEC);
 			if (retval)
 				return ERR_PTR(retval);
 		}
@@ -2460,7 +2461,7 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
 			return ERR_PTR(err);
 	}
 
-	err = inode_permission(base->d_inode, MAY_EXEC);
+	err = inode_permission(current, base->d_inode, MAY_EXEC);
 	if (err)
 		return ERR_PTR(err);
 
@@ -2514,7 +2515,7 @@ struct dentry *lookup_one_len_unlocked(const char *name,
 			return ERR_PTR(err);
 	}
 
-	err = inode_permission(base->d_inode, MAY_EXEC);
+	err = inode_permission(current, base->d_inode, MAY_EXEC);
 	if (err)
 		return ERR_PTR(err);
 
@@ -2755,7 +2756,7 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
 	BUG_ON(victim->d_parent->d_inode != dir);
 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
 
-	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+	error = inode_permission(current, dir, MAY_WRITE | MAY_EXEC);
 	if (error)
 		return error;
 	if (IS_APPEND(dir))
@@ -2799,7 +2800,7 @@ static inline int may_create(struct inode *dir, struct dentry *child)
 	if (!kuid_has_mapping(s_user_ns, current_fsuid()) ||
 	    !kgid_has_mapping(s_user_ns, current_fsgid()))
 		return -EOVERFLOW;
-	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
+	return inode_permission(current, dir, MAY_WRITE | MAY_EXEC);
 }
 
 /*
@@ -2900,7 +2901,7 @@ static int may_open(const struct path *path, int acc_mode, int flag)
 		break;
 	}
 
-	error = inode_permission(inode, MAY_OPEN | acc_mode);
+	error = inode_permission(current, inode, MAY_OPEN | acc_mode);
 	if (error)
 		return error;
 
@@ -2962,7 +2963,7 @@ static int may_o_create(const struct path *dir, struct dentry *dentry, umode_t m
 	    !kgid_has_mapping(s_user_ns, current_fsgid()))
 		return -EOVERFLOW;
 
-	error = inode_permission(dir->dentry->d_inode, MAY_WRITE | MAY_EXEC);
+	error = inode_permission(current, dir->dentry->d_inode, MAY_WRITE | MAY_EXEC);
 	if (error)
 		return error;
 
@@ -3376,7 +3377,7 @@ struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode, int open_flag)
 	int error;
 
 	/* we want directory to be writable */
-	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+	error = inode_permission(current, dir, MAY_WRITE | MAY_EXEC);
 	if (error)
 		goto out_err;
 	error = -EOPNOTSUPP;
@@ -3520,6 +3521,7 @@ struct file *do_filp_open(struct task_struct *tsk, int dfd,
 	int flags = op->lookup_flags;
 	struct file *filp;
 
+	/* TODO: should this prevent acessing current? */
 	set_nameidata(&nd, dfd, pathname);
 	filp = path_openat(&nd, op, flags | LOOKUP_RCU);
 	if (unlikely(filp == ERR_PTR(-ECHILD)))
@@ -4366,12 +4368,12 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	 */
 	if (new_dir != old_dir) {
 		if (is_dir) {
-			error = inode_permission(source, MAY_WRITE);
+			error = inode_permission(current, source, MAY_WRITE);
 			if (error)
 				return error;
 		}
 		if ((flags & RENAME_EXCHANGE) && new_is_dir) {
-			error = inode_permission(target, MAY_WRITE);
+			error = inode_permission(current, target, MAY_WRITE);
 			if (error)
 				return error;
 		}

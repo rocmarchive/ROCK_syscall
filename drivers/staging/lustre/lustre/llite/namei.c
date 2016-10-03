@@ -657,7 +657,7 @@ static struct dentry *ll_lookup_nd(struct inode *parent, struct dentry *dentry,
 	 * to proceed with lookup. LU-4185
 	 */
 	if ((flags & LOOKUP_CREATE) && !(flags & LOOKUP_OPEN) &&
-	    (inode_permission(parent, MAY_WRITE | MAY_EXEC) == 0))
+	    (inode_permission(current, parent, MAY_WRITE | MAY_EXEC) == 0))
 		return NULL;
 
 	if (flags & (LOOKUP_PARENT | LOOKUP_OPEN | LOOKUP_CREATE))

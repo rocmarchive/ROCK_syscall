@@ -863,8 +863,8 @@ static int ll_check_swap_layouts_validity(struct inode *inode1,
 	if (!S_ISREG(inode1->i_mode) || !S_ISREG(inode2->i_mode))
 		return -EINVAL;
 
-	if (inode_permission(inode1, MAY_WRITE) ||
-	    inode_permission(inode2, MAY_WRITE))
+	if (inode_permission(current, inode1, MAY_WRITE) ||
+	    inode_permission(current, inode2, MAY_WRITE))
 		return -EPERM;
 
 	if (inode1->i_sb != inode2->i_sb)
@@ -3048,7 +3048,7 @@ struct posix_acl *ll_get_acl(struct inode *inode, int type)
 	return acl;
 }
 
-int ll_inode_permission(struct inode *inode, int mask)
+int ll_inode_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	struct ll_sb_info *sbi;
 	struct root_squash_info *squash;
@@ -3079,14 +3079,14 @@ int ll_inode_permission(struct inode *inode, int mask)
 	sbi = ll_i2sbi(inode);
 	squash = &sbi->ll_squash;
 	if (unlikely(squash->rsi_uid &&
-		     uid_eq(current_fsuid(), GLOBAL_ROOT_UID) &&
+		     uid_eq(task_fsuid(tsk), GLOBAL_ROOT_UID) &&
 		     !(sbi->ll_flags & LL_SBI_NOROOTSQUASH))) {
 		squash_id = true;
 	}
 
 	if (squash_id) {
 		CDEBUG(D_OTHER, "squash creds (%d:%d)=>(%d:%d)\n",
-		       __kuid_val(current_fsuid()), __kgid_val(current_fsgid()),
+		       __kuid_val(task_fsuid(tsk)), __kgid_val(task_fsgid(tsk)),
 		       squash->rsi_uid, squash->rsi_gid);
 
 		/*
@@ -3103,15 +3103,15 @@ int ll_inode_permission(struct inode *inode, int mask)
 			if ((1 << cap) & CFS_CAP_FS_MASK)
 				cap_lower(cred->cap_effective, cap);
 		}
-		old_cred = override_creds(cred);
+		old_cred = task_override_creds(tsk, cred);
 	}
 
 	ll_stats_ops_tally(ll_i2sbi(inode), LPROC_LL_INODE_PERM, 1);
-	rc = generic_permission(inode, mask);
+	rc = generic_permission(tsk, inode, mask);
 
 	/* restore current process's credentials and FS capability */
 	if (squash_id) {
-		revert_creds(old_cred);
+		task_revert_creds(tsk, old_cred);
 		put_cred(cred);
 	}
 

@@ -70,7 +70,7 @@ int ocfs2_extend_allocation(struct inode *inode, u32 logical_start,
 int ocfs2_setattr(struct dentry *dentry, struct iattr *attr);
 int ocfs2_getattr(const struct path *path, struct kstat *stat,
 		  u32 request_mask, unsigned int flags);
-int ocfs2_permission(struct inode *inode, int mask);
+int ocfs2_permission(struct task_struct *tsk, struct inode *inode, int mask);
 
 int ocfs2_should_update_atime(struct inode *inode,
 			      struct vfsmount *vfsmnt);

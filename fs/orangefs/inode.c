@@ -267,7 +267,7 @@ int orangefs_getattr(const struct path *path, struct kstat *stat,
 	return ret;
 }
 
-int orangefs_permission(struct inode *inode, int mask)
+int orangefs_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	int ret;
 
@@ -281,7 +281,7 @@ int orangefs_permission(struct inode *inode, int mask)
 	if (ret < 0)
 		return ret;
 
-	return generic_permission(inode, mask);
+	return generic_permission(tsk, inode, mask);
 }
 
 /* ORANGEDS2 implementation of VFS inode operations for files */

@@ -757,7 +757,7 @@ out:
 	return 0;
 }
 
-static int proc_sys_permission(struct inode *inode, int mask)
+static int proc_sys_permission(struct task_struct *tsk, struct inode *inode, int mask)
 {
 	/*
 	 * sysctl entries that are not writeable,
@@ -771,6 +771,7 @@ static int proc_sys_permission(struct inode *inode, int mask)
 	if ((mask & MAY_EXEC) && S_ISREG(inode->i_mode))
 		return -EACCES;
 
+	//TODO: this should check tsk instead of current
 	head = grab_header(inode);
 	if (IS_ERR(head))
 		return PTR_ERR(head);
