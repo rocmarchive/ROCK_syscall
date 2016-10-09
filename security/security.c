@@ -632,12 +632,12 @@ int security_inode_readlink(struct dentry *dentry)
 	return call_int_hook(inode_readlink, 0, dentry);
 }
 
-int security_inode_follow_link(struct dentry *dentry, struct inode *inode,
-			       bool rcu)
+int security_inode_follow_link(struct task_struct *tsk, struct dentry *dentry,
+			       struct inode *inode, bool rcu)
 {
 	if (unlikely(IS_PRIVATE(inode)))
 		return 0;
-	return call_int_hook(inode_follow_link, 0, dentry, inode, rcu);
+	return call_int_hook(inode_follow_link, 0, tsk, dentry, inode, rcu);
 }
 
 int security_inode_permission(struct task_struct *tsk, struct inode *inode, int mask)

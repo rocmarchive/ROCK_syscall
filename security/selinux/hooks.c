@@ -2972,13 +2972,15 @@ static int selinux_inode_readlink(struct dentry *dentry)
 	return dentry_has_perm(cred, dentry, FILE__READ);
 }
 
-static int selinux_inode_follow_link(struct dentry *dentry, struct inode *inode,
+static int selinux_inode_follow_link(struct task_struct *tsk,
+				     struct dentry *dentry, struct inode *inode,
 				     bool rcu)
 {
-	const struct cred *cred = current_cred();
+	const struct cred *cred = get_task_cred(tsk);
 	struct common_audit_data ad;
 	struct inode_security_struct *isec;
 	u32 sid;
+	int ret;
 
 	validate_creds(cred);
 
@@ -2989,8 +2991,10 @@ static int selinux_inode_follow_link(struct dentry *dentry, struct inode *inode,
 	if (IS_ERR(isec))
 		return PTR_ERR(isec);
 
-	return avc_has_perm_flags(sid, isec->sid, isec->sclass, FILE__READ, &ad,
+	ret = avc_has_perm_flags(sid, isec->sid, isec->sclass, FILE__READ, &ad,
 				  rcu ? MAY_NOT_BLOCK : 0);
+	put_cred(cred);
+	return ret;
 }
 
 static noinline int audit_inode_permission(u32 sid, struct inode *inode,

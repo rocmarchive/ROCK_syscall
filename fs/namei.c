@@ -1035,7 +1035,7 @@ const char *get_link(struct task_struct *tsk, struct nameidata *nd)
 		touch_atime(&last->link);
 	}
 
-	error = security_inode_follow_link(dentry, inode,
+	error = security_inode_follow_link(tsk, dentry, inode,
 					   nd->flags & LOOKUP_RCU);
 	if (unlikely(error))
 		return ERR_PTR(error);

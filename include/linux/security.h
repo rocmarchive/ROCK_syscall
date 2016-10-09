@@ -268,8 +268,8 @@ int security_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 			  struct inode *new_dir, struct dentry *new_dentry,
 			  unsigned int flags);
 int security_inode_readlink(struct dentry *dentry);
-int security_inode_follow_link(struct dentry *dentry, struct inode *inode,
-			       bool rcu);
+int security_inode_follow_link(struct task_struct *tsk, struct dentry *dentry,
+			       struct inode *inode, bool rcu);
 int security_inode_permission(struct task_struct *tsk, struct inode *inode, int mask);
 int security_inode_setattr(struct dentry *dentry, struct iattr *attr);
 int security_inode_getattr(const struct path *path);
@@ -690,7 +690,8 @@ static inline int security_inode_readlink(struct dentry *dentry)
 	return 0;
 }
 
-static inline int security_inode_follow_link(struct dentry *dentry,
+static inline int security_inode_follow_link(struct task_struct *tsk,
+					     struct dentry *dentry,
 					     struct inode *inode,
 					     bool rcu)
 {
