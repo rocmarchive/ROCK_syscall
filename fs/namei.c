@@ -920,7 +920,7 @@ int sysctl_protected_hardlinks __read_mostly = 0;
  *
  * Returns 0 if following the symlink is allowed, -ve on error.
  */
-static inline int may_follow_link(struct nameidata *nd)
+static inline int may_follow_link(struct task_struct *tsk, struct nameidata *nd)
 {
 	const struct inode *inode;
 	const struct inode *parent;
@@ -931,7 +931,7 @@ static inline int may_follow_link(struct nameidata *nd)
 
 	/* Allowed if owner and follower match. */
 	inode = nd->link_inode;
-	if (uid_eq(current_cred()->fsuid, inode->i_uid))
+	if (uid_eq(task_fsuid(tsk), inode->i_uid))
 		return 0;
 
 	/* Allowed if parent directory not sticky and world-writable. */
@@ -2242,7 +2242,7 @@ static const char *path_init(struct task_struct *tsk, struct nameidata *nd, unsi
 static const char *trailing_symlink(struct task_struct *tsk, struct nameidata *nd)
 {
 	const char *s;
-	int error = may_follow_link(nd);
+	int error = may_follow_link(tsk, nd);
 	if (unlikely(error))
 		return ERR_PTR(error);
 	nd->flags |= LOOKUP_PARENT;
