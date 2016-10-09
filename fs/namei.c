@@ -2041,7 +2041,7 @@ static inline u64 hash_name(const void *salt, const char *name)
  * Returns 0 and nd will have valid dentry and mnt on success.
  * Returns error and drops reference to input namei data on failure.
  */
-static int link_path_walk(const char *name, struct nameidata *nd)
+static int link_path_walk(struct task_struct *tsk, const char *name, struct nameidata *nd)
 {
 	int err;
 
@@ -2268,7 +2268,7 @@ static int path_lookupat(struct task_struct *tsk, struct nameidata *nd, unsigned
 
 	if (IS_ERR(s))
 		return PTR_ERR(s);
-	while (!(err = link_path_walk(s, nd))
+	while (!(err = link_path_walk(tsk, s, nd))
 		&& ((err = lookup_last(nd)) > 0)) {
 		s = trailing_symlink(nd);
 		if (IS_ERR(s)) {
@@ -2324,7 +2324,7 @@ static int path_parentat(struct nameidata *nd, unsigned flags,
 	int err;
 	if (IS_ERR(s))
 		return PTR_ERR(s);
-	err = link_path_walk(s, nd);
+	err = link_path_walk(current, s, nd);
 	if (!err)
 		err = complete_walk(nd);
 	if (!err) {
@@ -2644,7 +2644,7 @@ path_mountpoint(struct nameidata *nd, unsigned flags, struct path *path)
 	int err;
 	if (IS_ERR(s))
 		return PTR_ERR(s);
-	while (!(err = link_path_walk(s, nd)) &&
+	while (!(err = link_path_walk(current, s, nd)) &&
 		(err = mountpoint_last(nd)) > 0) {
 		s = trailing_symlink(nd);
 		if (IS_ERR(s)) {
@@ -3489,7 +3489,7 @@ static struct file *path_openat(struct task_struct *tsk, struct nameidata *nd,
 		put_filp(file);
 		return ERR_CAST(s);
 	}
-	while (!(error = link_path_walk(s, nd)) &&
+	while (!(error = link_path_walk(tsk, s, nd)) &&
 		(error = do_last(nd, file, op, &opened)) > 0) {
 		nd->flags &= ~(LOOKUP_OPEN|LOOKUP_CREATE|LOOKUP_EXCL);
 		s = trailing_symlink(nd);
