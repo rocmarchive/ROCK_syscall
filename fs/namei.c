@@ -2239,7 +2239,7 @@ static const char *path_init(struct task_struct *tsk, struct nameidata *nd, unsi
 	}
 }
 
-static const char *trailing_symlink(struct nameidata *nd)
+static const char *trailing_symlink(struct task_struct *tsk, struct nameidata *nd)
 {
 	const char *s;
 	int error = may_follow_link(nd);
@@ -2270,7 +2270,7 @@ static int path_lookupat(struct task_struct *tsk, struct nameidata *nd, unsigned
 		return PTR_ERR(s);
 	while (!(err = link_path_walk(tsk, s, nd))
 		&& ((err = lookup_last(nd)) > 0)) {
-		s = trailing_symlink(nd);
+		s = trailing_symlink(tsk, nd);
 		if (IS_ERR(s)) {
 			err = PTR_ERR(s);
 			break;
@@ -2646,7 +2646,7 @@ path_mountpoint(struct nameidata *nd, unsigned flags, struct path *path)
 		return PTR_ERR(s);
 	while (!(err = link_path_walk(current, s, nd)) &&
 		(err = mountpoint_last(nd)) > 0) {
-		s = trailing_symlink(nd);
+		s = trailing_symlink(current, nd);
 		if (IS_ERR(s)) {
 			err = PTR_ERR(s);
 			break;
@@ -3492,7 +3492,7 @@ static struct file *path_openat(struct task_struct *tsk, struct nameidata *nd,
 	while (!(error = link_path_walk(tsk, s, nd)) &&
 		(error = do_last(nd, file, op, &opened)) > 0) {
 		nd->flags &= ~(LOOKUP_OPEN|LOOKUP_CREATE|LOOKUP_EXCL);
-		s = trailing_symlink(nd);
+		s = trailing_symlink(tsk, nd);
 		if (IS_ERR(s)) {
 			error = PTR_ERR(s);
 			break;
