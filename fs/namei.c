@@ -1018,7 +1018,7 @@ static int may_linkat(struct path *link)
 }
 
 static __always_inline
-const char *get_link(struct nameidata *nd)
+const char *get_link(struct task_struct *tsk, struct nameidata *nd)
 {
 	struct saved *last = nd->stack + nd->depth - 1;
 	struct dentry *dentry = last->link.dentry;
@@ -2118,7 +2118,7 @@ OK:
 			return err;
 
 		if (err) {
-			const char *s = get_link(nd);
+			const char *s = get_link(tsk, nd);
 
 			if (IS_ERR(s))
 				return PTR_ERR(s);
@@ -2247,7 +2247,7 @@ static const char *trailing_symlink(struct task_struct *tsk, struct nameidata *n
 		return ERR_PTR(error);
 	nd->flags |= LOOKUP_PARENT;
 	nd->stack[0].name = NULL;
-	s = get_link(nd);
+	s = get_link(tsk, nd);
 	return s ? s : "";
 }
 
