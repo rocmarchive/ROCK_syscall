@@ -209,6 +209,16 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 	case __NR_lseek:
 		ret = gpu_sc_lseek(p, s->arg[0], s->arg[1], s->arg[2]);
 		break;
+	case __NR_open:
+		/* We need to have access to the filename buffer */
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = do_sys_open(p->lead_thread, AT_FDCWD,
+		                  (const char* __user)s->arg[0],
+		                  s->arg[1], s->arg[2]);
+		break;
 	case __NR_close:
 		ret = __close_fd(p->lead_thread->files, s->arg[0]);
 		break;

@@ -1062,6 +1062,7 @@ long do_sys_open(struct task_struct *tsk, int dfd, const char __user *filename,
 	putname(tmp);
 	return fd;
 }
+EXPORT_SYMBOL(do_sys_open);
 
 SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 {
