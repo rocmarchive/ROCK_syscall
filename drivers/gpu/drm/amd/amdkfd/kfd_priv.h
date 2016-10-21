@@ -153,6 +153,11 @@ extern unsigned short interrupts_coalesce_delay;
  */
 extern bool interrupts_delay_extend;
 
+/*
+ * Kernel module parameter to control use of wave management for systemcalls.
+ */
+extern bool sc_use_wave_management;
+
 /**
  * enum kfd_sched_policy
  *

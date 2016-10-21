@@ -105,6 +105,11 @@ module_param(interrupts_delay_extend, bool, 0644);
 MODULE_PARM_DESC(interrupts_delay_extend,
 	"Extend the coalescing timer each time an interrupt is recieved (false =default)");
 
+bool sc_use_wave_management = false;
+module_param(sc_use_wave_management, bool, 0644);
+MODULE_PARM_DESC(sc_use_wave_management,
+	"GPU syscalls suspend waves on invocation (false = default)");
+
 int kgd2kfd_init(unsigned int interface_version,
 		const struct kgd2kfd_calls **g2f)
 {

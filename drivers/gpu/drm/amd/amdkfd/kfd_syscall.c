@@ -319,7 +319,7 @@ retry:
 	}
 	if (usemm)
 		unuse_mm(p->mm);
-	if (needs_resume) {
+	if (needs_resume && sc_use_wave_management) {
 		pr_debug("KFD_SC: Resumeing wave %x\n", data);
 		kfd_sc_resume_wave(p, data, to_scan != WAVESIZE);
 	}
