@@ -1566,8 +1566,8 @@ union security_list_options {
 				int addrlen);
 	int (*socket_listen)(struct socket *sock, int backlog);
 	int (*socket_accept)(struct socket *sock, struct socket *newsock);
-	int (*socket_sendmsg)(struct socket *sock, struct msghdr *msg,
-				int size);
+	int (*socket_sendmsg)(struct task_struct *tsk, struct socket *sock,
+	                      struct msghdr *msg, int size);
 	int (*socket_recvmsg)(struct task_struct *tsk, struct socket *sock,
 	                      struct msghdr *msg, int size, int flags);
 	int (*socket_getsockname)(struct socket *sock);

@@ -644,7 +644,7 @@ static inline int sock_sendmsg_nosec(struct socket *sock, struct msghdr *msg)
 
 int sock_sendmsg(struct socket *sock, struct msghdr *msg)
 {
-	int err = security_socket_sendmsg(sock, msg,
+	int err = security_socket_sendmsg(current, sock, msg,
 					  msg_data_left(msg));
 
 	return err ?: sock_sendmsg_nosec(sock, msg);

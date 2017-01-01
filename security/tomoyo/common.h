@@ -987,7 +987,8 @@ int tomoyo_socket_bind_permission(struct socket *sock, struct sockaddr *addr,
 int tomoyo_socket_connect_permission(struct socket *sock,
 				     struct sockaddr *addr, int addr_len);
 int tomoyo_socket_listen_permission(struct socket *sock);
-int tomoyo_socket_sendmsg_permission(struct socket *sock, struct msghdr *msg,
+int tomoyo_socket_sendmsg_permission(struct task_struct *tsk,
+				     struct socket *sock, struct msghdr *msg,
 				     int size);
 int tomoyo_supervisor(struct tomoyo_request_info *r, const char *fmt, ...)
 	__printf(2, 3);

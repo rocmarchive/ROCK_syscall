@@ -743,13 +743,15 @@ int tomoyo_socket_bind_permission(struct socket *sock, struct sockaddr *addr,
 /**
  * tomoyo_socket_sendmsg_permission - Check permission for sending a datagram.
  *
+ * @tsk:  Pointer to "struct task_struct".
  * @sock: Pointer to "struct socket".
  * @msg:  Pointer to "struct msghdr".
  * @size: Unused.
  *
  * Returns 0 on success, negative value otherwise.
  */
-int tomoyo_socket_sendmsg_permission(struct socket *sock, struct msghdr *msg,
+int tomoyo_socket_sendmsg_permission(struct task_struct *tsk,
+				     struct socket *sock, struct msghdr *msg,
 				     int size)
 {
 	struct tomoyo_addr_info address;
