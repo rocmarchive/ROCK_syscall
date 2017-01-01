@@ -45,6 +45,51 @@
 #include "kfd_dbgmgr.h"
 
 /*
+ *	Send a datagram to a given address. We move the address into kernel
+ *	space and check the user space data area is readable before invoking
+ *	the protocol.
+ */
+
+static int gpu_sc_sendto(struct kfd_process *p, int fd, void __user * buff,
+                         size_t len, unsigned int flags,
+                         struct sockaddr __user * addr, int addr_len)
+{
+	struct socket *sock;
+	struct sockaddr_storage address;
+	int err;
+	struct msghdr msg;
+	struct iovec iov;
+
+	err = import_single_range(WRITE, buff, len, &iov, &msg.msg_iter);
+	if (unlikely(err))
+		return err;
+	sock = sockfd_lookup_tsk(p->lead_thread, fd, &err);
+	if (!sock)
+		goto out;
+
+	msg.msg_name = NULL;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	msg.msg_namelen = 0;
+	if (addr) {
+		err = move_addr_to_kernel(addr, addr_len, &address);
+		if (err < 0)
+			goto out_put;
+		msg.msg_name = (struct sockaddr *)&address;
+		msg.msg_namelen = addr_len;
+	}
+	if (sock->file->f_flags & O_NONBLOCK)
+		flags |= MSG_DONTWAIT;
+	msg.msg_flags = flags;
+	err = sock_sendmsg(p->lead_thread, sock, &msg);
+
+out_put:
+	fput(sock->file);
+out:
+	return err;
+}
+
+/*
  *	Receive a frame from the socket and optionally record the address of the
  *	sender. We verify the buffers are writable and if needed move the
  *	sender address from kernel to user space.
@@ -292,6 +337,15 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		}
 		ret = gpu_sc_recvfrom(p, s->arg[0], (void*)s->arg[1], s->arg[2],
 		                      s->arg[3], (void*)s->arg[4], (void*)s->arg[5]);
+		break;
+	case __NR_sendto:
+		/* We need to have access to the filename buffer */
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = gpu_sc_sendto(p, s->arg[0], (void*)s->arg[1], s->arg[2],
+		                      s->arg[3], (void*)s->arg[4], s->arg[5]);
 		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
