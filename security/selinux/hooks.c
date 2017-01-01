@@ -4271,11 +4271,12 @@ static int socket_sockcreate_sid(const struct task_security_struct *tsec,
 				       socksid);
 }
 
-static int sock_has_perm(struct sock *sk, u32 perms)
+static int sock_has_perm(struct task_struct *tsk, struct sock *sk, u32 perms)
 {
 	struct sk_security_struct *sksec = sk->sk_security;
 	struct common_audit_data ad;
 	struct lsm_network_audit net = {0,};
+	u32 tsid = task_sid(tsk);
 
 	if (sksec->sid == SECINITSID_KERNEL)
 		return 0;
@@ -4284,8 +4285,7 @@ static int sock_has_perm(struct sock *sk, u32 perms)
 	ad.u.net = &net;
 	ad.u.net->sk = sk;
 
-	return avc_has_perm(current_sid(), sksec->sid, sksec->sclass, perms,
-			    &ad);
+	return avc_has_perm(tsid, sksec->sid, sksec->sclass, perms, &ad);
 }
 
 static int selinux_socket_create(int family, int type,
@@ -4347,7 +4347,7 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
 	u16 family;
 	int err;
 
-	err = sock_has_perm(sk, SOCKET__BIND);
+	err = sock_has_perm(current, sk, SOCKET__BIND);
 	if (err)
 		goto out;
 
@@ -4447,7 +4447,7 @@ static int selinux_socket_connect(struct socket *sock, struct sockaddr *address,
 	struct sk_security_struct *sksec = sk->sk_security;
 	int err;
 
-	err = sock_has_perm(sk, SOCKET__CONNECT);
+	err = sock_has_perm(current, sk, SOCKET__CONNECT);
 	if (err)
 		return err;
 
@@ -4499,7 +4499,7 @@ out:
 
 static int selinux_socket_listen(struct socket *sock, int backlog)
 {
-	return sock_has_perm(sock->sk, SOCKET__LISTEN);
+	return sock_has_perm(current, sock->sk, SOCKET__LISTEN);
 }
 
 static int selinux_socket_accept(struct socket *sock, struct socket *newsock)
@@ -4510,7 +4510,7 @@ static int selinux_socket_accept(struct socket *sock, struct socket *newsock)
 	u16 sclass;
 	u32 sid;
 
-	err = sock_has_perm(sock->sk, SOCKET__ACCEPT);
+	err = sock_has_perm(current, sock->sk, SOCKET__ACCEPT);
 	if (err)
 		return err;
 
@@ -4531,30 +4531,30 @@ static int selinux_socket_accept(struct socket *sock, struct socket *newsock)
 static int selinux_socket_sendmsg(struct socket *sock, struct msghdr *msg,
 				  int size)
 {
-	return sock_has_perm(sock->sk, SOCKET__WRITE);
+	return sock_has_perm(current, sock->sk, SOCKET__WRITE);
 }
 
-static int selinux_socket_recvmsg(struct socket *sock, struct msghdr *msg,
-				  int size, int flags)
+static int selinux_socket_recvmsg(struct task_struct *tsk, struct socket *sock,
+                                  struct msghdr *msg, int size, int flags)
 {
-	return sock_has_perm(sock->sk, SOCKET__READ);
+	return sock_has_perm(tsk, sock->sk, SOCKET__READ);
 }
 
 static int selinux_socket_getsockname(struct socket *sock)
 {
-	return sock_has_perm(sock->sk, SOCKET__GETATTR);
+	return sock_has_perm(current, sock->sk, SOCKET__GETATTR);
 }
 
 static int selinux_socket_getpeername(struct socket *sock)
 {
-	return sock_has_perm(sock->sk, SOCKET__GETATTR);
+	return sock_has_perm(current, sock->sk, SOCKET__GETATTR);
 }
 
 static int selinux_socket_setsockopt(struct socket *sock, int level, int optname)
 {
 	int err;
 
-	err = sock_has_perm(sock->sk, SOCKET__SETOPT);
+	err = sock_has_perm(current, sock->sk, SOCKET__SETOPT);
 	if (err)
 		return err;
 
@@ -4564,12 +4564,12 @@ static int selinux_socket_setsockopt(struct socket *sock, int level, int optname
 static int selinux_socket_getsockopt(struct socket *sock, int level,
 				     int optname)
 {
-	return sock_has_perm(sock->sk, SOCKET__GETOPT);
+	return sock_has_perm(current, sock->sk, SOCKET__GETOPT);
 }
 
 static int selinux_socket_shutdown(struct socket *sock, int how)
 {
-	return sock_has_perm(sock->sk, SOCKET__SHUTDOWN);
+	return sock_has_perm(current, sock->sk, SOCKET__SHUTDOWN);
 }
 
 static int selinux_socket_unix_stream_connect(struct sock *sock,
@@ -5057,7 +5057,7 @@ static int selinux_nlmsg_perm(struct sock *sk, struct sk_buff *skb)
 		goto out;
 	}
 
-	err = sock_has_perm(sk, perm);
+	err = sock_has_perm(current, sk, perm);
 out:
 	return err;
 }

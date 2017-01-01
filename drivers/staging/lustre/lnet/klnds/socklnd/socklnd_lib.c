@@ -184,7 +184,7 @@ ksocknal_lib_recv_iov(struct ksock_conn *conn)
 	LASSERT(nob <= conn->ksnc_rx_nob_wanted);
 
 	iov_iter_kvec(&msg.msg_iter, READ | ITER_KVEC, iov, niov, nob);
-	rc = sock_recvmsg(conn->ksnc_sock, &msg, MSG_DONTWAIT);
+	rc = sock_recvmsg(current, conn->ksnc_sock, &msg, MSG_DONTWAIT);
 
 	saved_csum = 0;
 	if (conn->ksnc_proto == &ksocknal_protocol_v2x) {
@@ -232,7 +232,7 @@ ksocknal_lib_recv_kiov(struct ksock_conn *conn)
 	LASSERT(nob <= conn->ksnc_rx_nob_wanted);
 
 	iov_iter_bvec(&msg.msg_iter, READ | ITER_BVEC, kiov, niov, nob);
-	rc = sock_recvmsg(conn->ksnc_sock, &msg, MSG_DONTWAIT);
+	rc = sock_recvmsg(current, conn->ksnc_sock, &msg, MSG_DONTWAIT);
 
 	if (conn->ksnc_msg.ksm_csum) {
 		for (i = 0, sum = rc; sum > 0; i++, sum -= fragnob) {

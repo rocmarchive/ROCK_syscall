@@ -345,7 +345,7 @@ int usbip_recv(struct socket *sock, void *buf, int size)
 		int sz = msg_data_left(&msg);
 		sock->sk->sk_allocation = GFP_NOIO;
 
-		result = sock_recvmsg(sock, &msg, MSG_WAITALL);
+		result = sock_recvmsg(current, sock, &msg, MSG_WAITALL);
 		if (result <= 0) {
 			pr_debug("receive sock %p buf %p size %u ret %d total %d\n",
 				 sock, buf + total, sz, result, total);

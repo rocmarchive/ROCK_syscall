@@ -1568,8 +1568,8 @@ union security_list_options {
 	int (*socket_accept)(struct socket *sock, struct socket *newsock);
 	int (*socket_sendmsg)(struct socket *sock, struct msghdr *msg,
 				int size);
-	int (*socket_recvmsg)(struct socket *sock, struct msghdr *msg,
-				int size, int flags);
+	int (*socket_recvmsg)(struct task_struct *tsk, struct socket *sock,
+	                      struct msghdr *msg, int size, int flags);
 	int (*socket_getsockname)(struct socket *sock);
 	int (*socket_getpeername)(struct socket *sock);
 	int (*socket_getsockopt)(struct socket *sock, int level, int optname);

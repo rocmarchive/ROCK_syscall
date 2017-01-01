@@ -233,7 +233,7 @@ static int sock_xmit(struct nbd_device *nbd, int index, int send,
 		if (send)
 			result = sock_sendmsg(sock, &msg);
 		else
-			result = sock_recvmsg(sock, &msg, msg.msg_flags);
+			result = sock_recvmsg(current, sock, &msg, msg.msg_flags);
 
 		if (result <= 0) {
 			if (result == 0)

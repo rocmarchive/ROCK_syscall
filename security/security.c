@@ -1314,10 +1314,10 @@ int security_socket_sendmsg(struct socket *sock, struct msghdr *msg, int size)
 	return call_int_hook(socket_sendmsg, 0, sock, msg, size);
 }
 
-int security_socket_recvmsg(struct socket *sock, struct msghdr *msg,
-			    int size, int flags)
+int security_socket_recvmsg(struct task_struct *tsk, struct socket *sock,
+                            struct msghdr *msg, int size, int flags)
 {
-	return call_int_hook(socket_recvmsg, 0, sock, msg, size, flags);
+	return call_int_hook(socket_recvmsg, 0, tsk, sock, msg, size, flags);
 }
 
 int security_socket_getsockname(struct socket *sock)

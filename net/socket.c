@@ -751,9 +751,10 @@ static inline int sock_recvmsg_nosec(struct socket *sock, struct msghdr *msg,
 	return sock->ops->recvmsg(sock, msg, msg_data_left(msg), flags);
 }
 
-int sock_recvmsg(struct socket *sock, struct msghdr *msg, int flags)
+int sock_recvmsg(struct task_struct *tsk, struct socket *sock,
+                 struct msghdr *msg, int flags)
 {
-	int err = security_socket_recvmsg(sock, msg, msg_data_left(msg), flags);
+	int err = security_socket_recvmsg(tsk, sock, msg, msg_data_left(msg), flags);
 
 	return err ?: sock_recvmsg_nosec(sock, msg, flags);
 }
@@ -782,7 +783,7 @@ int kernel_recvmsg(struct socket *sock, struct msghdr *msg,
 
 	iov_iter_kvec(&msg->msg_iter, READ | ITER_KVEC, vec, num, size);
 	set_fs(KERNEL_DS);
-	result = sock_recvmsg(sock, msg, flags);
+	result = sock_recvmsg(current, sock, msg, flags);
 	set_fs(oldfs);
 	return result;
 }
@@ -832,7 +833,7 @@ static ssize_t sock_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	if (!iov_iter_count(to))	/* Match SYS5 behaviour */
 		return 0;
 
-	res = sock_recvmsg(sock, &msg, msg.msg_flags);
+	res = sock_recvmsg(current, sock, &msg, msg.msg_flags);
 	*to = msg.msg_iter;
 	return res;
 }
@@ -1745,7 +1746,7 @@ SYSCALL_DEFINE6(recvfrom, int, fd, void __user *, ubuf, size_t, size,
 	msg.msg_flags = 0;
 	if (sock->file->f_flags & O_NONBLOCK)
 		flags |= MSG_DONTWAIT;
-	err = sock_recvmsg(sock, &msg, flags);
+	err = sock_recvmsg(current, sock, &msg, flags);
 
 	if (err >= 0 && addr != NULL) {
 		err2 = move_addr_to_user(&address,
@@ -2153,7 +2154,12 @@ static int ___sys_recvmsg(struct socket *sock, struct user_msghdr __user *msg,
 
 	if (sock->file->f_flags & O_NONBLOCK)
 		flags |= MSG_DONTWAIT;
-	err = (nosec ? sock_recvmsg_nosec : sock_recvmsg)(sock, msg_sys, flags);
+	if (nosec) {
+		err = sock_recvmsg_nosec(sock, msg_sys, flags);
+	} else {
+		err = sock_recvmsg(current, sock, msg_sys, flags);
+	}
+
 	if (err < 0)
 		goto out_freeiov;
 	len = err;

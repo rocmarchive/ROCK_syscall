@@ -539,7 +539,7 @@ cifs_readv_from_socket(struct TCP_Server_Info *server, struct msghdr *smb_msg)
 		if (server_unresponsive(server))
 			return -ECONNABORTED;
 
-		length = sock_recvmsg(server->ssocket, smb_msg, 0);
+		length = sock_recvmsg(current, server->ssocket, smb_msg, 0);
 
 		if (server->tcpStatus == CifsExiting)
 			return -ESHUTDOWN;

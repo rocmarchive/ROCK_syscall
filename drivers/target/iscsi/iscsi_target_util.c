@@ -1294,7 +1294,7 @@ static int iscsit_do_rx_data(
 		      count->iov, count->iov_count, data);
 
 	while (msg_data_left(&msg)) {
-		rx_loop = sock_recvmsg(conn->sock, &msg, MSG_WAITALL);
+		rx_loop = sock_recvmsg(current, conn->sock, &msg, MSG_WAITALL);
 		if (rx_loop <= 0) {
 			pr_debug("rx_loop: %d total_rx: %d\n",
 				rx_loop, total_rx);

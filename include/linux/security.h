@@ -1164,8 +1164,8 @@ int security_socket_connect(struct socket *sock, struct sockaddr *address, int a
 int security_socket_listen(struct socket *sock, int backlog);
 int security_socket_accept(struct socket *sock, struct socket *newsock);
 int security_socket_sendmsg(struct socket *sock, struct msghdr *msg, int size);
-int security_socket_recvmsg(struct socket *sock, struct msghdr *msg,
-			    int size, int flags);
+int security_socket_recvmsg(struct task_struct *tsk, struct socket *sock,
+                            struct msghdr *msg, int size, int flags);
 int security_socket_getsockname(struct socket *sock);
 int security_socket_getpeername(struct socket *sock);
 int security_socket_getsockopt(struct socket *sock, int level, int optname);
@@ -1256,7 +1256,8 @@ static inline int security_socket_sendmsg(struct socket *sock,
 	return 0;
 }
 
-static inline int security_socket_recvmsg(struct socket *sock,
+static inline int security_socket_recvmsg(struct task_struct *tsk,
+                                          struct socket *sock,
 					  struct msghdr *msg, int size,
 					  int flags)
 {

@@ -527,7 +527,7 @@ static int ceph_tcp_recvmsg(struct socket *sock, void *buf, size_t len)
 	int r;
 
 	iov_iter_kvec(&msg.msg_iter, READ | ITER_KVEC, &iov, 1, len);
-	r = sock_recvmsg(sock, &msg, msg.msg_flags);
+	r = sock_recvmsg(current, sock, &msg, msg.msg_flags);
 	if (r == -EAGAIN)
 		r = 0;
 	return r;
@@ -546,7 +546,7 @@ static int ceph_tcp_recvpage(struct socket *sock, struct page *page,
 
 	BUG_ON(page_offset + length > PAGE_SIZE);
 	iov_iter_bvec(&msg.msg_iter, READ | ITER_BVEC, &bvec, 1, length);
-	r = sock_recvmsg(sock, &msg, msg.msg_flags);
+	r = sock_recvmsg(current, sock, &msg, msg.msg_flags);
 	if (r == -EAGAIN)
 		r = 0;
 	return r;
