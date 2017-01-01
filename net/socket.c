@@ -213,8 +213,8 @@ int move_addr_to_kernel(void __user *uaddr, int ulen, struct sockaddr_storage *k
  *	specified. Zero is returned for a success.
  */
 
-static int move_addr_to_user(struct sockaddr_storage *kaddr, int klen,
-			     void __user *uaddr, int __user *ulen)
+int move_addr_to_user(struct sockaddr_storage *kaddr, int klen,
+		     void __user *uaddr, int __user *ulen)
 {
 	int err;
 	int len;
@@ -239,6 +239,7 @@ static int move_addr_to_user(struct sockaddr_storage *kaddr, int klen,
 	 */
 	return __put_user(klen, ulen);
 }
+EXPORT_SYMBOL(move_addr_to_user);
 
 static struct kmem_cache *sock_inode_cachep __read_mostly;
 
@@ -468,12 +469,12 @@ EXPORT_SYMBOL(sock_from_file);
  *	On a success the socket object pointer is returned.
  */
 
-struct socket *sockfd_lookup(int fd, int *err)
+struct socket *sockfd_lookup_tsk(struct task_struct *tsk, int fd, int *err)
 {
 	struct file *file;
 	struct socket *sock;
 
-	file = fget(fd);
+	file = fget_task(fd, tsk);
 	if (!file) {
 		*err = -EBADF;
 		return NULL;
@@ -483,6 +484,12 @@ struct socket *sockfd_lookup(int fd, int *err)
 	if (!sock)
 		fput(file);
 	return sock;
+}
+EXPORT_SYMBOL(sockfd_lookup_tsk);
+
+struct socket *sockfd_lookup(int fd, int *err)
+{
+	return sockfd_lookup_tsk(current, fd, err);
 }
 EXPORT_SYMBOL(sockfd_lookup);
 

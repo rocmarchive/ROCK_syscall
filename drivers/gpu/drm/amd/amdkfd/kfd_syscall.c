@@ -31,15 +31,65 @@
 #include <linux/mm.h>
 #include <linux/mman.h>
 #include <linux/mmu_context.h>
+#include <linux/net.h>
 #include <linux/pagemap.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/socket.h>
+#include <linux/uio.h>
 #include <linux/userfaultfd_k.h>
 
 #include <asm/errno.h>
 
 #include "kfd_priv.h"
 #include "kfd_dbgmgr.h"
+
+/*
+ *	Receive a frame from the socket and optionally record the address of the
+ *	sender. We verify the buffers are writable and if needed move the
+ *	sender address from kernel to user space.
+ */
+
+static int gpu_sc_recvfrom(struct kfd_process *p, int fd, void __user *ubuf,
+                           size_t size, unsigned int flags,
+                           struct sockaddr __user *addr, int __user *addr_len)
+{
+	struct socket *sock;
+	struct iovec iov;
+	struct msghdr msg;
+	struct sockaddr_storage address;
+	int err, err2;
+
+	err = import_single_range(READ, ubuf, size, &iov, &msg.msg_iter);
+	if (unlikely(err))
+		return err;
+	sock = sockfd_lookup_tsk(p->lead_thread, fd, &err);
+	if (!sock)
+		goto out;
+
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	/* Save some cycles and don't copy the address if not needed */
+	msg.msg_name = addr ? (struct sockaddr *)&address : NULL;
+	/* We assume all kernel code knows the size of sockaddr_storage */
+	msg.msg_namelen = 0;
+	msg.msg_iocb = NULL;
+	if (sock->file->f_flags & O_NONBLOCK)
+		flags |= MSG_DONTWAIT;
+
+	err = sock_recvmsg(p->lead_thread, sock, &msg, flags);
+
+	if (err >= 0 && addr != NULL) {
+		err2 = move_addr_to_user(&address,
+					 msg.msg_namelen, addr, addr_len);
+		if (err2 < 0)
+			err = err2;
+	}
+
+	fput(sock->file);
+out:
+	return err;
+}
 
 /* TODO: These are almost exact copies of functions in  fs/read_write.c.
  * Export and reuse those functions instead. */
@@ -234,6 +284,15 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		userfaultfd_unmap_complete(p->lead_thread->mm, &uf);
 		break;
 	}
+	case __NR_recvfrom:
+		/* We need to have access to the filename buffer */
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = gpu_sc_recvfrom(p, s->arg[0], (void*)s->arg[1], s->arg[2],
+		                      s->arg[3], (void*)s->arg[4], (void*)s->arg[5]);
+		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
 		       "%x:%x:%llx:%llx:%llx:%llx:%llx:%llx\n",
