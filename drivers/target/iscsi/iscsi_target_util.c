@@ -1351,7 +1351,7 @@ int tx_data(
 		      iov, iov_count, data);
 
 	while (msg_data_left(&msg)) {
-		int tx_loop = sock_sendmsg(conn->sock, &msg);
+		int tx_loop = sock_sendmsg(current, conn->sock, &msg);
 		if (tx_loop <= 0) {
 			pr_debug("tx_loop: %d total_tx %d\n",
 				tx_loop, total_tx);

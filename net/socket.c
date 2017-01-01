@@ -642,9 +642,9 @@ static inline int sock_sendmsg_nosec(struct socket *sock, struct msghdr *msg)
 	return ret;
 }
 
-int sock_sendmsg(struct socket *sock, struct msghdr *msg)
+int sock_sendmsg(struct task_struct *tsk, struct socket *sock, struct msghdr *msg)
 {
-	int err = security_socket_sendmsg(current, sock, msg,
+	int err = security_socket_sendmsg(tsk, sock, msg,
 					  msg_data_left(msg));
 
 	return err ?: sock_sendmsg_nosec(sock, msg);
@@ -655,7 +655,7 @@ int kernel_sendmsg(struct socket *sock, struct msghdr *msg,
 		   struct kvec *vec, size_t num, size_t size)
 {
 	iov_iter_kvec(&msg->msg_iter, WRITE | ITER_KVEC, vec, num, size);
-	return sock_sendmsg(sock, msg);
+	return sock_sendmsg(current, sock, msg);
 }
 EXPORT_SYMBOL(kernel_sendmsg);
 
@@ -862,7 +862,7 @@ static ssize_t sock_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	if (sock->type == SOCK_SEQPACKET)
 		msg.msg_flags |= MSG_EOR;
 
-	res = sock_sendmsg(sock, &msg);
+	res = sock_sendmsg(current, sock, &msg);
 	*from = msg.msg_iter;
 	return res;
 }
@@ -1701,7 +1701,7 @@ SYSCALL_DEFINE6(sendto, int, fd, void __user *, buff, size_t, len,
 	if (sock->file->f_flags & O_NONBLOCK)
 		flags |= MSG_DONTWAIT;
 	msg.msg_flags = flags;
-	err = sock_sendmsg(sock, &msg);
+	err = sock_sendmsg(current, sock, &msg);
 
 out_put:
 	fput_light(sock->file, fput_needed);
@@ -2002,7 +2002,7 @@ static int ___sys_sendmsg(struct socket *sock, struct user_msghdr __user *msg,
 		err = sock_sendmsg_nosec(sock, msg_sys);
 		goto out_freectl;
 	}
-	err = sock_sendmsg(sock, msg_sys);
+	err = sock_sendmsg(current, sock, msg_sys);
 	/*
 	 * If this is sendmmsg() and sending to current destination address was
 	 * successful, remember it.

@@ -1871,7 +1871,7 @@ int drbd_send(struct drbd_connection *connection, struct socket *sock,
 		drbd_update_congested(connection);
 	}
 	do {
-		rv = sock_sendmsg(sock, &msg);
+		rv = sock_sendmsg(current, sock, &msg);
 		if (rv == -EAGAIN) {
 			if (we_should_drop_the_connection(connection, sock))
 				break;

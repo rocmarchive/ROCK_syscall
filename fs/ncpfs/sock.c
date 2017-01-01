@@ -46,7 +46,7 @@ static int _send(struct socket *sock, const void *buff, int len)
 	struct msghdr msg = { .msg_flags = 0 };
 	struct kvec vec = {.iov_base = (void *)buff, .iov_len = len};
 	iov_iter_kvec(&msg.msg_iter, WRITE | ITER_KVEC, &vec, 1, len);
-	return sock_sendmsg(sock, &msg);
+	return sock_sendmsg(current, sock, &msg);
 }
 
 struct ncp_request_reply {
@@ -198,7 +198,7 @@ static inline void __ncptcp_abort(struct ncp_server *server)
 static int ncpdgram_send(struct socket *sock, struct ncp_request_reply *req)
 {
 	struct msghdr msg = { .msg_iter = req->from, .msg_flags = MSG_DONTWAIT };
-	return sock_sendmsg(sock, &msg);
+	return sock_sendmsg(current, sock, &msg);
 }
 
 static void __ncptcp_try_send(struct ncp_server *server)
@@ -212,7 +212,7 @@ static void __ncptcp_try_send(struct ncp_server *server)
 		return;
 
 	msg.msg_iter = rq->from;
-	result = sock_sendmsg(server->ncp_sock, &msg);
+	result = sock_sendmsg(current, server->ncp_sock, &msg);
 
 	if (result == -EAGAIN)
 		return;
@@ -349,7 +349,7 @@ static void info_server(struct ncp_server *server, unsigned int id, const void *
 		iov_iter_kvec(&msg.msg_iter, ITER_KVEC | WRITE,
 				iov, 2, len + 8);
 
-		sock_sendmsg(server->info_sock, &msg);
+		sock_sendmsg(current, server->info_sock, &msg);
 	}
 }
 

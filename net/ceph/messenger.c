@@ -608,7 +608,7 @@ static int ceph_tcp_sendpage(struct socket *sock, struct page *page,
 		msg.msg_flags |= MSG_EOR;  /* superfluous, but what the hell */
 
 	iov_iter_bvec(&msg.msg_iter, WRITE | ITER_BVEC, &bvec, 1, size);
-	ret = sock_sendmsg(sock, &msg);
+	ret = sock_sendmsg(current, sock, &msg);
 	if (ret == -EAGAIN)
 		ret = 0;
 

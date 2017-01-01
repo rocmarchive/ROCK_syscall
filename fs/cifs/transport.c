@@ -169,7 +169,7 @@ smb_send_kvec(struct TCP_Server_Info *server, struct msghdr *smb_msg,
 		 * after the retries we will kill the socket and
 		 * reconnect which may clear the network problem.
 		 */
-		rc = sock_sendmsg(ssocket, smb_msg);
+		rc = sock_sendmsg(current, ssocket, smb_msg);
 		if (rc == -EAGAIN) {
 			retries++;
 			if (retries >= 14 ||
