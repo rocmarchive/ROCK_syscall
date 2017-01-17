@@ -158,6 +158,11 @@ extern bool interrupts_delay_extend;
  */
 extern bool sc_use_wave_management;
 
+/*
+ * Kernel module parameter to control fallback to scan the entire sc area.
+ */
+extern bool sc_rescan_fallback;
+
 /**
  * enum kfd_sched_policy
  *

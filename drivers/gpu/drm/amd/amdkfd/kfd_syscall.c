@@ -304,7 +304,7 @@ retry:
 		}
 	}
 
-	if ((handled == 0) && (to_scan == WAVESIZE)) {
+	if ((handled == 0) && (to_scan == WAVESIZE) && sc_rescan_fallback) {
 		pr_warn("KFD_SC: Failed to find SC request (0x%x:0x%x:%p) "
 		        "scanning all %lu elements\n", wf_id, data,
 			p->sc_kloc + start, p->sc_elements);
@@ -312,9 +312,9 @@ retry:
 		start = 0;
 		goto retry;
 	}
-	if (handled == 0) {
+	if (handled == 0 && sc_rescan_fallback) {
 		pr_err("KFD_SC: Failed to find SC request despite scanning "
-		       " %u elements. The GPU will hang.\n", to_scan);
+		       " %u elements. The GPU might hang.\n", to_scan);
 		return -EIO;
 	}
 	if (usemm)

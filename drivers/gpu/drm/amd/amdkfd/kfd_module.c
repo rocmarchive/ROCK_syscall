@@ -110,6 +110,11 @@ module_param(sc_use_wave_management, bool, 0644);
 MODULE_PARM_DESC(sc_use_wave_management,
 	"GPU syscalls suspend waves on invocation (false = default)");
 
+bool sc_rescan_fallback = false;
+module_param(sc_rescan_fallback, bool, 0644);
+MODULE_PARM_DESC(sc_rescan_fallback,
+	"GPU syscall work rescans the entire area if it fail to find active slot (false = default)");
+
 int kgd2kfd_init(unsigned int interface_version,
 		const struct kgd2kfd_calls **g2f)
 {
