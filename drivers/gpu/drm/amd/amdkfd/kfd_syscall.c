@@ -252,9 +252,11 @@ static ssize_t gpu_sc_lseek(struct kfd_process *p,  unsigned int fd,
 static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
                            bool *usemm, bool *needs_resume)
 {
-	u32 sc_num;
 	long ret = 0;
 	bool noret;
+	u32 sc_num;
+	u64 *arg;
+	u64 larg[6];
 
 	//TODO: verify that this si legal to do.
 	atomic_t *status = (atomic_t*)&s->status;
@@ -269,6 +271,14 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 
 	sc_num = s->sc_num & ~KFD_SC_NORET_FLAG;
 	noret = (s->sc_num & KFD_SC_NORET_FLAG) != 0;
+	if (noret) {
+		memcpy(larg, s->arg, sizeof(larg));
+		arg = larg;
+		atomic_set(status, KFD_SC_STATUS_FREE);
+	} else {
+		arg = s->arg;
+	}
+
 	switch (sc_num) {
 	case __NR_restart_syscall: /* hijack __NR_restart_syscall as nop syscall */
 		ret = 0;
@@ -278,31 +288,31 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = gpu_sc_read(p, s->arg[0], s->arg[1], s->arg[2]);
+		ret = gpu_sc_read(p, arg[0], arg[1], arg[2]);
 		break;
 	case __NR_pread64:
 		if (!*usemm) {
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = gpu_sc_pread(p, s->arg[0], s->arg[1], s->arg[2], s->arg[3]);
+		ret = gpu_sc_pread(p, arg[0], arg[1], arg[2], arg[3]);
 		break;
 	case __NR_write:
 		if (!*usemm) {
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = gpu_sc_write(p, s->arg[0], s->arg[1], s->arg[2]);
+		ret = gpu_sc_write(p, arg[0], arg[1], arg[2]);
 		break;
 	case __NR_pwrite64:
 		if (!*usemm) {
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = gpu_sc_pwrite(p, s->arg[0], s->arg[1], s->arg[2], s->arg[3]);
+		ret = gpu_sc_pwrite(p, arg[0], arg[1], arg[2], arg[3]);
 		break;
 	case __NR_lseek:
-		ret = gpu_sc_lseek(p, s->arg[0], s->arg[1], s->arg[2]);
+		ret = gpu_sc_lseek(p, arg[0], arg[1], arg[2]);
 		break;
 	case __NR_open:
 		/* We need to have access to the filename buffer */
@@ -311,20 +321,19 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			*usemm = true;
 		}
 		ret = do_sys_open(p->lead_thread, AT_FDCWD,
-		                  (const char* __user)s->arg[0],
-		                  s->arg[1], s->arg[2]);
+		                  (const char* __user)arg[0], arg[1], arg[2]);
 		break;
 	case __NR_close:
-		ret = __close_fd(p->lead_thread->files, s->arg[0]);
+		ret = __close_fd(p->lead_thread->files, arg[0]);
 		break;
 	case __NR_mmap:
-		ret = mmap_pgoff_task(p->lead_thread, s->arg[0], s->arg[1],
-		                      s->arg[2], s->arg[3], s->arg[4], s->arg[5]);
+		ret = mmap_pgoff_task(p->lead_thread, arg[0], arg[1], arg[2],
+		                      arg[3], arg[4], arg[5]);
 		break;
 	case __NR_munmap: {
 		LIST_HEAD(uf);
 		down_write(&p->lead_thread->mm->mmap_sem);
-		ret = do_munmap(p->lead_thread->mm, s->arg[0], s->arg[1], &uf);
+		ret = do_munmap(p->lead_thread->mm, arg[0], arg[1], &uf);
 		up_write(&p->lead_thread->mm->mmap_sem);
 		userfaultfd_unmap_complete(p->lead_thread->mm, &uf);
 		break;
@@ -334,7 +343,7 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = __do_madvise(p->lead_thread, s->arg[0], s->arg[1], s->arg[2]);
+		ret = __do_madvise(p->lead_thread, arg[0], arg[1], arg[2]);
 		break;
 	case __NR_recvfrom:
 		/* We need to have access to the filename buffer */
@@ -342,8 +351,8 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = gpu_sc_recvfrom(p, s->arg[0], (void*)s->arg[1], s->arg[2],
-		                      s->arg[3], (void*)s->arg[4], (void*)s->arg[5]);
+		ret = gpu_sc_recvfrom(p, arg[0], (void*)arg[1], arg[2],
+		                      arg[3], (void*)arg[4], (void*)arg[5]);
 		break;
 	case __NR_sendto:
 		/* We need to have access to the filename buffer */
@@ -351,8 +360,8 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 			use_mm(p->mm);
 			*usemm = true;
 		}
-		ret = gpu_sc_sendto(p, s->arg[0], (void*)s->arg[1], s->arg[2],
-		                      s->arg[3], (void*)s->arg[4], s->arg[5]);
+		ret = gpu_sc_sendto(p, arg[0], (void*)arg[1], arg[2],
+		                    arg[3], (void*)arg[4], arg[5]);
 		break;
 	case __NR_getrusage:
 		/* We need to have access to the rusage buffer */
@@ -373,10 +382,11 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		       s->arg[3], s->arg[4], s->arg[5]);
 		ret = -ENOSYS;
 	}
-	s->arg[0] = ret;
-	atomic_set(status, noret ? KFD_SC_STATUS_FREE : KFD_SC_STATUS_FINISHED);
-	if (!noret)
+	if (!noret) {
+		s->arg[0] = ret;
+		atomic_set(status, KFD_SC_STATUS_FINISHED);
 		*needs_resume = true;
+	}
 }
 
 #define DEFAULT_COUNT 25
