@@ -2114,6 +2114,7 @@ extern unsigned long do_mmap_task(struct task_struct *tsk,
 	struct list_head *uf);
 extern int do_munmap(struct mm_struct *, unsigned long, size_t,
 		     struct list_head *uf);
+extern int __do_madvise(struct task_struct *, unsigned long, size_t, int);
 
 static inline unsigned long do_mmap(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot, unsigned long flags,
