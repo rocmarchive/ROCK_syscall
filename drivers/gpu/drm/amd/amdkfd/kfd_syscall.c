@@ -329,6 +329,13 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		userfaultfd_unmap_complete(p->lead_thread->mm, &uf);
 		break;
 	}
+	case __NR_madvise:
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		ret = __do_madvise(p->lead_thread, s->arg[0], s->arg[1], s->arg[2]);
+		break;
 	case __NR_recvfrom:
 		/* We need to have access to the filename buffer */
 		if (!*usemm) {
