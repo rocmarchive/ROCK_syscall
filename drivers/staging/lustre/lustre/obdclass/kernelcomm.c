@@ -66,7 +66,7 @@ int libcfs_kkuc_msg_put(struct file *filp, void *payload)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	while (count > 0) {
-		rc = vfs_write(filp, (void __force __user *)payload,
+		rc = vfs_write(current, filp, (void __force __user *)payload,
 			       count, &offset);
 		if (rc < 0)
 			break;

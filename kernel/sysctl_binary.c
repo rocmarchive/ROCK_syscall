@@ -959,7 +959,7 @@ static ssize_t bin_string(struct file *file,
 	if (newval && newlen) {
 		loff_t pos = 0;
 
-		result = vfs_write(file, newval, newlen, &pos);
+		result = vfs_write(current, file, newval, newlen, &pos);
 		if (result < 0)
 			goto out;
 	}

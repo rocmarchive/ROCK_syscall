@@ -1271,7 +1271,7 @@ ssize_t redirected_tty_write(struct file *file, const char __user *buf,
 
 	if (p) {
 		ssize_t res;
-		res = vfs_write(p, buf, count, &p->f_pos);
+		res = vfs_write(current, p, buf, count, &p->f_pos);
 		fput(p);
 		return res;
 	}

@@ -541,7 +541,8 @@ ssize_t __kernel_write(struct file *file, const char *buf, size_t count, loff_t 
 
 EXPORT_SYMBOL(__kernel_write);
 
-ssize_t vfs_write(struct file *file, const char __user *buf, size_t count, loff_t *pos)
+ssize_t vfs_write(struct task_struct *tsk, struct file *file,
+		const char __user *buf, size_t count, loff_t *pos)
 {
 	ssize_t ret;
 
@@ -560,9 +561,9 @@ ssize_t vfs_write(struct file *file, const char __user *buf, size_t count, loff_
 		ret = __vfs_write(file, buf, count, pos);
 		if (ret > 0) {
 			fsnotify_modify(file);
-			add_wchar(current, ret);
+			add_wchar(tsk, ret);
 		}
-		inc_syscw(current);
+		inc_syscw(tsk);
 		file_end_write(file);
 	}
 
@@ -604,7 +605,7 @@ SYSCALL_DEFINE3(write, unsigned int, fd, const char __user *, buf,
 
 	if (f.file) {
 		loff_t pos = file_pos_read(f.file);
-		ret = vfs_write(f.file, buf, count, &pos);
+		ret = vfs_write(current, f.file, buf, count, &pos);
 		if (ret >= 0)
 			file_pos_write(f.file, pos);
 		fdput_pos(f);
@@ -646,7 +647,7 @@ SYSCALL_DEFINE4(pwrite64, unsigned int, fd, const char __user *, buf,
 	if (f.file) {
 		ret = -ESPIPE;
 		if (f.file->f_mode & FMODE_PWRITE)  
-			ret = vfs_write(f.file, buf, count, &pos);
+			ret = vfs_write(current, f.file, buf, count, &pos);
 		fdput(f);
 	}
 

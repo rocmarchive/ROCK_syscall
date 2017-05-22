@@ -734,7 +734,7 @@ int cfs_tracefile_dump_all_pages(char *filename)
 		__LASSERT_TAGE_INVARIANT(tage);
 
 		buf = kmap(tage->page);
-		rc = vfs_write(filp, (__force const char __user *)buf,
+		rc = vfs_write(current, filp, (__force const char __user *)buf,
 			       tage->used, &filp->f_pos);
 		kunmap(tage->page);
 
@@ -1034,7 +1034,8 @@ static int tracefiled(void *arg)
 				f_pos = i_size_read(file_inode(filp));
 
 			buf = kmap(tage->page);
-			rc = vfs_write(filp, (__force const char __user *)buf,
+			rc = vfs_write(current, filp,
+				       (__force const char __user *)buf,
 				       tage->used, &f_pos);
 			kunmap(tage->page);
 
