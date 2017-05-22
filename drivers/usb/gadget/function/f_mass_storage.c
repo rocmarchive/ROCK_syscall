@@ -711,7 +711,7 @@ static int do_read(struct fsg_common *common)
 
 		/* Perform the read */
 		file_offset_tmp = file_offset;
-		nread = vfs_read(curlun->filp,
+		nread = vfs_read(current, curlun->filp,
 				 (char __user *)bh->buf,
 				 amount, &file_offset_tmp);
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
@@ -1050,7 +1050,7 @@ static int do_verify(struct fsg_common *common)
 
 		/* Perform the read */
 		file_offset_tmp = file_offset;
-		nread = vfs_read(curlun->filp,
+		nread = vfs_read(current, curlun->filp,
 				(char __user *) bh->buf,
 				amount, &file_offset_tmp);
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,

@@ -874,7 +874,7 @@ int kernel_read(struct file *file, loff_t offset,
 	old_fs = get_fs();
 	set_fs(get_ds());
 	/* The cast to a user pointer is valid due to the set_fs() */
-	result = vfs_read(file, (void __user *)addr, count, &pos);
+	result = vfs_read(current, file, (void __user *)addr, count, &pos);
 	set_fs(old_fs);
 	return result;
 }
@@ -990,7 +990,7 @@ EXPORT_SYMBOL_GPL(kernel_read_file_from_fd);
 
 ssize_t read_code(struct file *file, unsigned long addr, loff_t pos, size_t len)
 {
-	ssize_t res = vfs_read(file, (void __user *)addr, len, &pos);
+	ssize_t res = vfs_read(current, file, (void __user *)addr, len, &pos);
 	if (res > 0)
 		flush_icache_range(addr, addr + len);
 	return res;

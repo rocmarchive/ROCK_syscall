@@ -1751,7 +1751,8 @@ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 
 extern ssize_t __vfs_read(struct file *, char __user *, size_t, loff_t *);
 extern ssize_t __vfs_write(struct file *, const char __user *, size_t, loff_t *);
-extern ssize_t vfs_read(struct file *, char __user *, size_t, loff_t *);
+extern ssize_t vfs_read(struct task_struct *tsk, struct file *, char __user *,
+		size_t, loff_t *);
 extern ssize_t vfs_write(struct file *, const char __user *, size_t, loff_t *);
 extern ssize_t vfs_readv(struct file *, const struct iovec __user *,
 		unsigned long, loff_t *, int);

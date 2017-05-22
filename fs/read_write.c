@@ -455,7 +455,8 @@ ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
 }
 EXPORT_SYMBOL(__vfs_read);
 
-ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
+ssize_t vfs_read(struct task_struct *tsk, struct file *file, char __user *buf,
+		size_t count, loff_t *pos)
 {
 	ssize_t ret;
 
@@ -473,9 +474,9 @@ ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 		ret = __vfs_read(file, buf, count, pos);
 		if (ret > 0) {
 			fsnotify_access(file);
-			add_rchar(current, ret);
+			add_rchar(tsk, ret);
 		}
-		inc_syscr(current);
+		inc_syscr(tsk);
 	}
 
 	return ret;
@@ -586,7 +587,7 @@ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
 
 	if (f.file) {
 		loff_t pos = file_pos_read(f.file);
-		ret = vfs_read(f.file, buf, count, &pos);
+		ret = vfs_read(current, f.file, buf, count, &pos);
 		if (ret >= 0)
 			file_pos_write(f.file, pos);
 		fdput_pos(f);
@@ -624,7 +625,7 @@ SYSCALL_DEFINE4(pread64, unsigned int, fd, char __user *, buf,
 	if (f.file) {
 		ret = -ESPIPE;
 		if (f.file->f_mode & FMODE_PREAD)
-			ret = vfs_read(f.file, buf, count, &pos);
+			ret = vfs_read(current, f.file, buf, count, &pos);
 		fdput(f);
 	}
 

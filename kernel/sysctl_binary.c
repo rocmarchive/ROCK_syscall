@@ -936,7 +936,7 @@ static ssize_t bin_string(struct file *file,
 		loff_t pos = 0;
 		int ch;
 
-		result = vfs_read(file, oldval, oldlen, &pos);
+		result = vfs_read(current, file, oldval, oldlen, &pos);
 		if (result < 0)
 			goto out;
 
