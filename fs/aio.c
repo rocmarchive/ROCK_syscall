@@ -1493,7 +1493,7 @@ static ssize_t aio_read(struct kiocb *req, struct iocb *iocb, bool vectored,
 	ret = aio_setup_rw(READ, iocb, &iovec, vectored, compat, &iter);
 	if (ret)
 		return ret;
-	ret = rw_verify_area(READ, file, &req->ki_pos, iov_iter_count(&iter));
+	ret = rw_verify_area(current, READ, file, &req->ki_pos, iov_iter_count(&iter));
 	if (!ret)
 		ret = aio_ret(req, call_read_iter(file, req, &iter));
 	kfree(iovec);
@@ -1516,7 +1516,7 @@ static ssize_t aio_write(struct kiocb *req, struct iocb *iocb, bool vectored,
 	ret = aio_setup_rw(WRITE, iocb, &iovec, vectored, compat, &iter);
 	if (ret)
 		return ret;
-	ret = rw_verify_area(WRITE, file, &req->ki_pos, iov_iter_count(&iter));
+	ret = rw_verify_area(current, WRITE, file, &req->ki_pos, iov_iter_count(&iter));
 	if (!ret) {
 		req->ki_flags |= IOCB_WRITE;
 		file_start_write(file);

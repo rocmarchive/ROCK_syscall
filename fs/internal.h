@@ -150,7 +150,7 @@ extern struct dentry *d_alloc_cursor(struct dentry *);
 /*
  * read_write.c
  */
-extern int rw_verify_area(int, struct file *, const loff_t *, size_t);
+extern int rw_verify_area(struct task_struct *, int, struct file *, const loff_t *, size_t);
 
 /*
  * pipe.c

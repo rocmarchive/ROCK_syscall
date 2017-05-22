@@ -887,7 +887,7 @@ static long do_splice_to(struct file *in, loff_t *ppos,
 	if (unlikely(!(in->f_mode & FMODE_READ)))
 		return -EBADF;
 
-	ret = rw_verify_area(READ, in, ppos, len);
+	ret = rw_verify_area(current, READ, in, ppos, len);
 	if (unlikely(ret < 0))
 		return ret;
 
@@ -1076,7 +1076,7 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
 	if (unlikely(out->f_flags & O_APPEND))
 		return -EINVAL;
 
-	ret = rw_verify_area(WRITE, out, opos, len);
+	ret = rw_verify_area(current, WRITE, out, opos, len);
 	if (unlikely(ret < 0))
 		return ret;
 
@@ -1161,7 +1161,7 @@ static long do_splice(struct file *in, loff_t __user *off_in,
 		if (unlikely(out->f_flags & O_APPEND))
 			return -EINVAL;
 
-		ret = rw_verify_area(WRITE, out, &offset, len);
+		ret = rw_verify_area(current, WRITE, out, &offset, len);
 		if (unlikely(ret < 0))
 			return ret;
 

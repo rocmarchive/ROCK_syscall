@@ -396,7 +396,7 @@ ssize_t vfs_iter_write(struct file *file, struct iov_iter *iter, loff_t *ppos)
 }
 EXPORT_SYMBOL(vfs_iter_write);
 
-int rw_verify_area(int read_write, struct file *file, const loff_t *ppos, size_t count)
+int rw_verify_area(struct task_struct *tsk, int read_write, struct file *file, const loff_t *ppos, size_t count)
 {
 	struct inode *inode;
 	loff_t pos;
@@ -468,7 +468,7 @@ ssize_t vfs_read(struct task_struct *tsk, struct file *file, char __user *buf,
 	if (unlikely(!access_ok(VERIFY_WRITE, buf, count)))
 		return -EFAULT;
 
-	ret = rw_verify_area(READ, file, pos, count);
+	ret = rw_verify_area(tsk, READ, file, pos, count);
 	if (!ret) {
 		if (count > MAX_RW_COUNT)
 			count =  MAX_RW_COUNT;
@@ -552,7 +552,7 @@ ssize_t vfs_write(struct file *file, const char __user *buf, size_t count, loff_
 	if (unlikely(!access_ok(VERIFY_READ, buf, count)))
 		return -EFAULT;
 
-	ret = rw_verify_area(WRITE, file, pos, count);
+	ret = rw_verify_area(tsk, WRITE, file, pos, count);
 	if (!ret) {
 		if (count > MAX_RW_COUNT)
 			count =  MAX_RW_COUNT;
@@ -852,7 +852,7 @@ static ssize_t __do_readv_writev(int type, struct file *file,
 	tot_len = iov_iter_count(iter);
 	if (!tot_len)
 		goto out;
-	ret = rw_verify_area(type, file, pos, tot_len);
+	ret = rw_verify_area(current, type, file, pos, tot_len);
 	if (ret < 0)
 		goto out;
 
@@ -1333,7 +1333,7 @@ static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
 		if (!(in.file->f_mode & FMODE_PREAD))
 			goto fput_in;
 	}
-	retval = rw_verify_area(READ, in.file, &pos, count);
+	retval = rw_verify_area(current, READ, in.file, &pos, count);
 	if (retval < 0)
 		goto fput_in;
 	if (count > MAX_RW_COUNT)
@@ -1352,7 +1352,7 @@ static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
 	in_inode = file_inode(in.file);
 	out_inode = file_inode(out.file);
 	out_pos = out.file->f_pos;
-	retval = rw_verify_area(WRITE, out.file, &out_pos, count);
+	retval = rw_verify_area(current, WRITE, out.file, &out_pos, count);
 	if (retval < 0)
 		goto fput_out;
 
@@ -1503,11 +1503,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
 	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
 		return -EINVAL;
 
-	ret = rw_verify_area(READ, file_in, &pos_in, len);
+	ret = rw_verify_area(current, READ, file_in, &pos_in, len);
 	if (unlikely(ret))
 		return ret;
 
-	ret = rw_verify_area(WRITE, file_out, &pos_out, len);
+	ret = rw_verify_area(current, WRITE, file_out, &pos_out, len);
 	if (unlikely(ret))
 		return ret;
 
