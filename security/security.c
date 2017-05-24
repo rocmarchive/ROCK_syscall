@@ -807,11 +807,11 @@ int security_inode_copy_up_xattr(const char *name)
 }
 EXPORT_SYMBOL(security_inode_copy_up_xattr);
 
-int security_file_permission(struct file *file, int mask)
+int security_file_permission(struct task_struct *tsk, struct file *file, int mask)
 {
 	int ret;
 
-	ret = call_int_hook(file_permission, 0, file, mask);
+	ret = call_int_hook(file_permission, 0, tsk, file, mask);
 	if (ret)
 		return ret;
 

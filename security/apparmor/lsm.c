@@ -400,7 +400,7 @@ static void apparmor_file_free_security(struct file *file)
 	aa_free_file_context(ctx);
 }
 
-static int common_file_perm(const char *op, struct file *file, u32 mask)
+static int common_file_perm(struct task_struct *tsk, const char *op, struct file *file, u32 mask)
 {
 	struct aa_file_ctx *fctx = file->f_security;
 	struct aa_profile *profile, *fprofile = aa_cred_profile(file->f_cred);
@@ -412,7 +412,7 @@ static int common_file_perm(const char *op, struct file *file, u32 mask)
 	    !path_mediated_fs(file->f_path.dentry))
 		return 0;
 
-	profile = __aa_current_profile();
+	profile = __aa_task_profile(tsk);
 
 	/* revalidate access, if task is unconfined, or the cached cred
 	 * doesn't match or if the request is for more permissions than
@@ -428,9 +428,9 @@ static int common_file_perm(const char *op, struct file *file, u32 mask)
 	return error;
 }
 
-static int apparmor_file_permission(struct file *file, int mask)
+static int apparmor_file_permission(struct task_struct *tsk, struct file *file, int mask)
 {
-	return common_file_perm(OP_FPERM, file, mask);
+	return common_file_perm(tsk, OP_FPERM, file, mask);
 }
 
 static int apparmor_file_lock(struct file *file, unsigned int cmd)
@@ -440,7 +440,7 @@ static int apparmor_file_lock(struct file *file, unsigned int cmd)
 	if (cmd == F_WRLCK)
 		mask |= MAY_WRITE;
 
-	return common_file_perm(OP_FLOCK, file, mask);
+	return common_file_perm(current, OP_FLOCK, file, mask);
 }
 
 static int common_mmap(const char *op, struct file *file, unsigned long prot,
@@ -462,7 +462,7 @@ static int common_mmap(const char *op, struct file *file, unsigned long prot,
 	if (prot & PROT_EXEC)
 		mask |= AA_EXEC_MMAP;
 
-	return common_file_perm(op, file, mask);
+	return common_file_perm(current, op, file, mask);
 }
 
 static int apparmor_mmap_file(struct file *file, unsigned long reqprot,

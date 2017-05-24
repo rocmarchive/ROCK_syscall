@@ -31,7 +31,7 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
 	else if (!file->f_op->iterate)
 		goto out;
 
-	res = security_file_permission(file, MAY_READ);
+	res = security_file_permission(current, file, MAY_READ);
 	if (res)
 		goto out;
 

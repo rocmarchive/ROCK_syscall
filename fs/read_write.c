@@ -422,7 +422,7 @@ int rw_verify_area(struct task_struct *tsk, int read_write, struct file *file, c
 		if (retval < 0)
 			return retval;
 	}
-	return security_file_permission(file,
+	return security_file_permission(tsk, file,
 				read_write == READ ? MAY_READ : MAY_WRITE);
 }
 EXPORT_SYMBOL(rw_verify_area);
@@ -1648,7 +1648,7 @@ static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
 			return retval;
 	}
 
-	return security_file_permission(file, write ? MAY_WRITE : MAY_READ);
+	return security_file_permission(current, file, write ? MAY_WRITE : MAY_READ);
 }
 
 /*

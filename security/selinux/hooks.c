@@ -3363,25 +3363,28 @@ static int selinux_inode_copy_up_xattr(const char *name)
 
 /* file security operations */
 
-static int selinux_revalidate_file_permission(struct file *file, int mask)
+static int selinux_revalidate_file_permission(struct task_struct *tsk, struct file *file, int mask)
 {
-	const struct cred *cred = current_cred();
+	const struct cred *cred = get_task_cred(tsk);
 	struct inode *inode = file_inode(file);
+	int ret;
 
 	/* file_mask_to_av won't add FILE__WRITE if MAY_APPEND is set */
 	if ((file->f_flags & O_APPEND) && (mask & MAY_WRITE))
 		mask |= MAY_APPEND;
 
-	return file_has_perm(cred, file,
-			     file_mask_to_av(inode->i_mode, mask));
+	ret = file_has_perm(cred, file,
+			    file_mask_to_av(inode->i_mode, mask));
+	put_cred(cred);
+	return ret;
 }
 
-static int selinux_file_permission(struct file *file, int mask)
+static int selinux_file_permission(struct task_struct *tsk, struct file *file, int mask)
 {
 	struct inode *inode = file_inode(file);
 	struct file_security_struct *fsec = file->f_security;
 	struct inode_security_struct *isec;
-	u32 sid = current_sid();
+	u32 sid = task_sid(tsk);
 
 	if (!mask)
 		/* No permission to check.  Existence test. */
@@ -3393,7 +3396,7 @@ static int selinux_file_permission(struct file *file, int mask)
 		/* No change since file_open check. */
 		return 0;
 
-	return selinux_revalidate_file_permission(file, mask);
+	return selinux_revalidate_file_permission(tsk, file, mask);
 }
 
 static int selinux_file_alloc_security(struct file *file)

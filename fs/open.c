@@ -294,7 +294,7 @@ int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
 	 * Revalidate the write permissions, in case security policy has
 	 * changed since the files were opened.
 	 */
-	ret = security_file_permission(file, MAY_WRITE);
+	ret = security_file_permission(current, file, MAY_WRITE);
 	if (ret)
 		return ret;
 
