@@ -1049,7 +1049,7 @@ int cap_vm_enough_memory(struct mm_struct *mm, long pages)
  * capability security module.  Returns 0 if this mapping should be allowed
  * -EPERM if not.
  */
-int cap_mmap_addr(unsigned long addr)
+int cap_mmap_addr(struct task_struct *tsk, unsigned long addr)
 {
 	int ret = 0;
 

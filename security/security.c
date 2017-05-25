@@ -877,9 +877,9 @@ int security_mmap_file(struct task_struct *tsk, struct file *file,
 	return ima_file_mmap(file, prot);
 }
 
-int security_mmap_addr(unsigned long addr)
+int security_mmap_addr(struct task_struct *tsk, unsigned long addr)
 {
-	return call_int_hook(mmap_addr, 0, addr);
+	return call_int_hook(mmap_addr, 0, tsk, addr);
 }
 
 int security_file_mprotect(struct vm_area_struct *vma, unsigned long reqprot,

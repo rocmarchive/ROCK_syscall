@@ -2146,7 +2146,7 @@ get_unmapped_area(struct task_struct *tsk, struct file *file,
 	if (offset_in_page(addr))
 		return -EINVAL;
 
-	error = security_mmap_addr(addr);
+	error = security_mmap_addr(tsk, addr);
 	return error ? error : addr;
 }
 
@@ -2344,7 +2344,7 @@ int expand_downwards(struct vm_area_struct *vma,
 	int error;
 
 	address &= PAGE_MASK;
-	error = security_mmap_addr(address);
+	error = security_mmap_addr(current, address);
 	if (error)
 		return error;
 

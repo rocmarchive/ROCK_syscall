@@ -1458,7 +1458,7 @@ union security_list_options {
 	void (*file_free_security)(struct file *file);
 	int (*file_ioctl)(struct file *file, unsigned int cmd,
 				unsigned long arg);
-	int (*mmap_addr)(unsigned long addr);
+	int (*mmap_addr)(struct task_struct *tsk, unsigned long addr);
 	int (*mmap_file)(struct task_struct *tsk, struct file *file,
 				unsigned long reqprot, unsigned long prot,
 				unsigned long flags);

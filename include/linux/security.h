@@ -86,7 +86,7 @@ extern int cap_inode_setxattr(struct dentry *dentry, const char *name,
 extern int cap_inode_removexattr(struct dentry *dentry, const char *name);
 extern int cap_inode_need_killpriv(struct dentry *dentry);
 extern int cap_inode_killpriv(struct dentry *dentry);
-extern int cap_mmap_addr(unsigned long addr);
+extern int cap_mmap_addr(struct task_struct *tsk, unsigned long addr);
 extern int cap_mmap_file(struct task_struct *tsk, struct file *file,
                          unsigned long reqprot, unsigned long prot,
 			 unsigned long flags);
@@ -294,7 +294,7 @@ void security_file_free(struct file *file);
 int security_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 int security_mmap_file(struct task_struct *tsk, struct file *file,
                        unsigned long prot, unsigned long flags);
-int security_mmap_addr(unsigned long addr);
+int security_mmap_addr(struct task_struct *tsk, unsigned long addr);
 int security_file_mprotect(struct vm_area_struct *vma, unsigned long reqprot,
 			   unsigned long prot);
 int security_file_lock(struct file *file, unsigned int cmd);
