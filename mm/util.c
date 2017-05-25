@@ -303,7 +303,7 @@ unsigned long vm_mmap_pgoff_task(struct task_struct *tsk,
 	unsigned long populate;
 	LIST_HEAD(uf);
 
-	ret = security_mmap_file(file, prot, flag);
+	ret = security_mmap_file(tsk, file, prot, flag);
 	if (!ret) {
 		if (down_write_killable(&mm->mmap_sem))
 			return -EINTR;

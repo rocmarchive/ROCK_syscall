@@ -1745,7 +1745,7 @@ static int smack_file_fcntl(struct file *file, unsigned int cmd,
  * @flags contains the operational flags.
  * Return 0 if permission is granted.
  */
-static int smack_mmap_file(struct file *file,
+static int smack_mmap_file(struct task_struct *tsk, struct file *file,
 			   unsigned long reqprot, unsigned long prot,
 			   unsigned long flags)
 {
@@ -1776,8 +1776,8 @@ static int smack_mmap_file(struct file *file,
 		return -EACCES;
 	mkp = isp->smk_mmap;
 
-	tsp = current_security();
-	skp = smk_of_current();
+	tsp = task_security(tsk);
+	skp = smk_of_task_struct(tsk);
 	rc = 0;
 
 	rcu_read_lock();

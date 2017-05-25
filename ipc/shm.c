@@ -1208,7 +1208,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
 	sfd->file = shp->shm_file;
 	sfd->vm_ops = NULL;
 
-	err = security_mmap_file(file, prot, flags);
+	err = security_mmap_file(current, file, prot, flags);
 	if (err)
 		goto out_fput;
 

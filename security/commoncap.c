@@ -1063,8 +1063,9 @@ int cap_mmap_addr(unsigned long addr)
 	return ret;
 }
 
-int cap_mmap_file(struct file *file, unsigned long reqprot,
-		  unsigned long prot, unsigned long flags)
+int cap_mmap_file(struct task_struct *tsk, struct file *file,
+                  unsigned long reqprot, unsigned long prot,
+                  unsigned long flags)
 {
 	return 0;
 }

@@ -866,11 +866,11 @@ static inline unsigned long mmap_prot(struct file *file, unsigned long prot)
 	return prot;
 }
 
-int security_mmap_file(struct file *file, unsigned long prot,
-			unsigned long flags)
+int security_mmap_file(struct task_struct *tsk, struct file *file,
+			unsigned long prot, unsigned long flags)
 {
 	int ret;
-	ret = call_int_hook(mmap_file, 0, file, prot,
+	ret = call_int_hook(mmap_file, 0, tsk, file, prot,
 					mmap_prot(file, prot), flags);
 	if (ret)
 		return ret;

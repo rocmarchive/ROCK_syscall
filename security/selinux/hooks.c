@@ -3499,9 +3499,10 @@ static int selinux_file_ioctl(struct file *file, unsigned int cmd,
 
 static int default_noexec;
 
-static int file_map_prot_check(struct file *file, unsigned long prot, int shared)
+static int file_map_prot_check(struct task_struct *tsk, struct file *file,
+		               unsigned long prot, int shared)
 {
-	const struct cred *cred = current_cred();
+	const struct cred *cred = get_task_cred(tsk);
 	u32 sid = cred_sid(cred);
 	int rc = 0;
 
@@ -3530,10 +3531,11 @@ static int file_map_prot_check(struct file *file, unsigned long prot, int shared
 		if (prot & PROT_EXEC)
 			av |= FILE__EXECUTE;
 
-		return file_has_perm(cred, file, av);
+		rc = file_has_perm(cred, file, av);
 	}
 
 error:
+	put_cred(cred);
 	return rc;
 }
 
@@ -3550,13 +3552,14 @@ static int selinux_mmap_addr(unsigned long addr)
 	return rc;
 }
 
-static int selinux_mmap_file(struct file *file, unsigned long reqprot,
-			     unsigned long prot, unsigned long flags)
+static int selinux_mmap_file(struct task_struct *tsk, struct file *file,
+                             unsigned long reqprot, unsigned long prot,
+			     unsigned long flags)
 {
 	if (selinux_checkreqprot)
 		prot = reqprot;
 
-	return file_map_prot_check(file, prot,
+	return file_map_prot_check(tsk, file, prot,
 				   (flags & MAP_TYPE) == MAP_SHARED);
 }
 
@@ -3597,7 +3600,7 @@ static int selinux_file_mprotect(struct vm_area_struct *vma,
 			return rc;
 	}
 
-	return file_map_prot_check(vma->vm_file, prot, vma->vm_flags&VM_SHARED);
+	return file_map_prot_check(current, vma->vm_file, prot, vma->vm_flags&VM_SHARED);
 }
 
 static int selinux_file_lock(struct file *file, unsigned int cmd)

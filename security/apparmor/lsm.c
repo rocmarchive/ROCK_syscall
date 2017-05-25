@@ -443,8 +443,9 @@ static int apparmor_file_lock(struct file *file, unsigned int cmd)
 	return common_file_perm(current, OP_FLOCK, file, mask);
 }
 
-static int common_mmap(const char *op, struct file *file, unsigned long prot,
-		       unsigned long flags)
+static int common_mmap(struct task_struct *tsk, const char *op,
+                       struct file *file, unsigned long prot,
+                       unsigned long flags)
 {
 	int mask = 0;
 
@@ -462,19 +463,20 @@ static int common_mmap(const char *op, struct file *file, unsigned long prot,
 	if (prot & PROT_EXEC)
 		mask |= AA_EXEC_MMAP;
 
-	return common_file_perm(current, op, file, mask);
+	return common_file_perm(tsk, op, file, mask);
 }
 
-static int apparmor_mmap_file(struct file *file, unsigned long reqprot,
+static int apparmor_mmap_file(struct task_struct *tsk, struct file *file,
+			      unsigned long reqprot,
 			      unsigned long prot, unsigned long flags)
 {
-	return common_mmap(OP_FMMAP, file, prot, flags);
+	return common_mmap(tsk, OP_FMMAP, file, prot, flags);
 }
 
 static int apparmor_file_mprotect(struct vm_area_struct *vma,
 				  unsigned long reqprot, unsigned long prot)
 {
-	return common_mmap(OP_FMPROT, vma->vm_file, prot,
+	return common_mmap(current, OP_FMPROT, vma->vm_file, prot,
 			   !(vma->vm_flags & VM_SHARED) ? MAP_PRIVATE : 0);
 }
 
