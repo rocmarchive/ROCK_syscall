@@ -354,6 +354,18 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		ret = gpu_sc_sendto(p, s->arg[0], (void*)s->arg[1], s->arg[2],
 		                      s->arg[3], (void*)s->arg[4], s->arg[5]);
 		break;
+	case __NR_getrusage:
+		/* We need to have access to the rusage buffer */
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		if (s->arg[0] != RUSAGE_SELF && s->arg[0] != RUSAGE_CHILDREN &&
+		    s->arg[0] != RUSAGE_THREAD)
+			ret = -EINVAL;
+		else
+			ret = getrusage(p->lead_thread, s->arg[0], (void*)s->arg[1]);
+		break;
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
 		       "%x:%x:%llx:%llx:%llx:%llx:%llx:%llx\n",
