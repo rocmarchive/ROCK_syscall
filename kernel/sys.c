@@ -1628,6 +1628,7 @@ int getrusage(struct task_struct *p, int who, struct rusage __user *ru)
 	k_getrusage(p, who, &r);
 	return copy_to_user(ru, &r, sizeof(r)) ? -EFAULT : 0;
 }
+EXPORT_SYMBOL_GPL(getrusage);
 
 SYSCALL_DEFINE2(getrusage, int, who, struct rusage __user *, ru)
 {
