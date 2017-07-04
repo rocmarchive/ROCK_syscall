@@ -540,6 +540,27 @@ const struct cred *override_creds(const struct cred *new)
 }
 EXPORT_SYMBOL(override_creds);
 
+const struct cred *task_override_creds(struct task_struct *tsk, const struct cred *new)
+{
+	const struct cred *old = tsk->cred;
+
+	kdebug("override_creds(%p{%d,%d})", new,
+	       atomic_read(&new->usage),
+	       read_cred_subscribers(new));
+
+	validate_creds(old);
+	validate_creds(new);
+	get_cred(new);
+	alter_cred_subscribers(new, 1);
+	rcu_assign_pointer(tsk->cred, new);
+	alter_cred_subscribers(old, -1);
+
+	kdebug("override_creds() = %p{%d,%d}", old,
+	       atomic_read(&old->usage),
+	       read_cred_subscribers(old));
+	return old;
+}
+EXPORT_SYMBOL(task_override_creds);
 /**
  * revert_creds - Revert a temporary subjective credentials override
  * @old: The credentials to be restored
@@ -564,6 +585,22 @@ void revert_creds(const struct cred *old)
 }
 EXPORT_SYMBOL(revert_creds);
 
+void task_revert_creds(struct task_struct *tsk, const struct cred *old)
+{
+	const struct cred *override = tsk->cred;
+
+	kdebug("revert_creds(%p{%d,%d})", old,
+	       atomic_read(&old->usage),
+	       read_cred_subscribers(old));
+
+	validate_creds(old);
+	validate_creds(override);
+	alter_cred_subscribers(old, 1);
+	rcu_assign_pointer(tsk->cred, old);
+	alter_cred_subscribers(override, -1);
+	put_cred(override);
+}
+EXPORT_SYMBOL(task_revert_creds);
 /*
  * initialise the credentials stuff
  */
