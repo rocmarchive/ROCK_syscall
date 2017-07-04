@@ -1614,7 +1614,13 @@ out:
 		struct mm_struct *mm = get_task_mm(p);
 
 		if (mm) {
+			unsigned long srss = get_mm_counter(mm, MM_SHMEMPAGES);
+			unsigned long drss = get_mm_rss(mm) - srss;
+			/* convert pages to KBs */
+			r->ru_ixrss = srss * (PAGE_SIZE / 1024);
+			r->ru_idrss = drss * (PAGE_SIZE / 1024);
 			setmax_mm_hiwater_rss(&maxrss, mm);
+
 			mmput(mm);
 		}
 	}
