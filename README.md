@@ -1,5 +1,25 @@
 ### AMD Radeon Open Compute Kernel driver
 
+#### This version is modified to support system call invocation from GPU code.
+
+The code has been tested on Kaveri and Carrizo APUs. Implemented sytem calls include:
+
+* sys\_read
+* sys\_write
+* sys\_pread
+* sys\_pwrite
+* sys\_lseek
+* sys\_open
+* sys\_close
+* sys\_mmap
+* sys\_munmap
+* sys\_madvise
+* sys\_recvfrom
+* sys\_sendto
+* sys\_getrusage
+
+The orignal design can be found at: https://arxiv.org/abs/1705.06965
+
 #### What's New in this tree ?
 
 * dGPU support for Fiji
