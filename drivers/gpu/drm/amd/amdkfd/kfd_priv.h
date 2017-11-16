@@ -102,7 +102,7 @@ extern int max_num_of_queues_per_device;
 	(KFD_MAX_NUM_OF_PROCESSES *			\
 			KFD_MAX_NUM_OF_QUEUES_PER_PROCESS)
 
-#define KFD_KERNEL_QUEUE_SIZE 2048
+#define KFD_KERNEL_QUEUE_SIZE (4 * PAGE_SIZE)
 
 /* Kernel module parameter to specify the scheduling policy */
 extern int sched_policy;
