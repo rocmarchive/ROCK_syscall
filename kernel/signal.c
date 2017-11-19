@@ -2953,13 +2953,13 @@ SYSCALL_DEFINE2(tkill, pid_t, pid, int, sig)
 	return do_tkill(0, pid, sig);
 }
 
-static int do_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t *info)
+int do_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t *info, struct task_struct *tsk)
 {
 	/* Not even root can pretend to send signals from the kernel.
 	 * Nor can they impersonate a kill()/tgkill(), which adds source info.
 	 */
 	if ((info->si_code >= 0 || info->si_code == SI_TKILL) &&
-	    (task_pid_vnr(current) != pid))
+	    (task_pid_nr_ns(tsk, task_active_pid_ns(tsk)) != pid))
 		return -EPERM;
 
 	info->si_signo = sig;
@@ -2967,6 +2967,7 @@ static int do_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t *info)
 	/* POSIX.1b doesn't mention process groups.  */
 	return kill_proc_info(sig, info, pid);
 }
+EXPORT_SYMBOL_GPL(do_rt_sigqueueinfo);
 
 /**
  *  sys_rt_sigqueueinfo - send signal information to a signal
@@ -2980,7 +2981,7 @@ SYSCALL_DEFINE3(rt_sigqueueinfo, pid_t, pid, int, sig,
 	siginfo_t info;
 	if (copy_from_user(&info, uinfo, sizeof(siginfo_t)))
 		return -EFAULT;
-	return do_rt_sigqueueinfo(pid, sig, &info);
+	return do_rt_sigqueueinfo(pid, sig, &info, current);
 }
 
 #ifdef CONFIG_COMPAT
@@ -2993,7 +2994,7 @@ COMPAT_SYSCALL_DEFINE3(rt_sigqueueinfo,
 	int ret = copy_siginfo_from_user32(&info, uinfo);
 	if (unlikely(ret))
 		return ret;
-	return do_rt_sigqueueinfo(pid, sig, &info);
+	return do_rt_sigqueueinfo(pid, sig, &info, current);
 }
 #endif
 
