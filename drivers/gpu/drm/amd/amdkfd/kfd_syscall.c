@@ -366,6 +366,19 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		else
 			ret = getrusage(p->lead_thread, s->arg[0], (void*)s->arg[1]);
 		break;
+	case __NR_rt_sigqueueinfo: {
+		siginfo_t info;
+		if (!*usemm) {
+			use_mm(p->mm);
+			*usemm = true;
+		}
+		if (copy_from_user(&info, (void __user *)s->arg[2], sizeof(siginfo_t))) {
+			ret = -EFAULT;
+		} else {
+			ret = do_rt_sigqueueinfo(s->arg[0], s->arg[1], &info, p->lead_thread);
+		}
+		break;
+	}
 	default:
 		pr_warn("KFD_SC: Found pending syscall: "
 		       "%x:%x:%llx:%llx:%llx:%llx:%llx:%llx\n",
