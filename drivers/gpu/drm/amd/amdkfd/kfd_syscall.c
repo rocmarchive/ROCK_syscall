@@ -34,6 +34,7 @@
 #include <linux/net.h>
 #include <linux/pagemap.h>
 #include <linux/sched.h>
+#include <linux/security.h>
 #include <linux/slab.h>
 #include <linux/socket.h>
 #include <linux/uio.h>
@@ -377,6 +378,18 @@ static void kfd_sc_process(struct kfd_process *p, struct kfd_sc *s,
 		} else {
 			ret = do_rt_sigqueueinfo(s->arg[0], s->arg[1], &info, p->lead_thread);
 		}
+		break;
+	}
+	case __NR_ioctl: {
+		struct fd f = fdget_task(s->arg[0], p->lead_thread);
+		ssize_t ret = -EBADF;
+
+		if (f.file) {
+			ret = security_file_ioctl(p->lead_thread, f.file, s->arg[1], s->arg[2]);
+			if (!ret)
+				ret = do_vfs_ioctl(f.file, s->arg[0], s->arg[1], s->arg[2]);
+		}
+		fdput(f);
 		break;
 	}
 	default:
