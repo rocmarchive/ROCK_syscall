@@ -695,7 +695,7 @@ SYSCALL_DEFINE3(ioctl, unsigned int, fd, unsigned int, cmd, unsigned long, arg)
 
 	if (!f.file)
 		return -EBADF;
-	error = security_file_ioctl(f.file, cmd, arg);
+	error = security_file_ioctl(current, f.file, cmd, arg);
 	if (!error)
 		error = do_vfs_ioctl(f.file, fd, cmd, arg);
 	fdput(f);

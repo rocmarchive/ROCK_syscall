@@ -1456,8 +1456,8 @@ union security_list_options {
 	int (*file_permission)(struct task_struct *tsk, struct file *file, int mask);
 	int (*file_alloc_security)(struct file *file);
 	void (*file_free_security)(struct file *file);
-	int (*file_ioctl)(struct file *file, unsigned int cmd,
-				unsigned long arg);
+	int (*file_ioctl)(struct task_struct *tsk, struct file *file,
+				unsigned int cmd, unsigned long arg);
 	int (*mmap_addr)(struct task_struct *tsk, unsigned long addr);
 	int (*mmap_file)(struct task_struct *tsk, struct file *file,
 				unsigned long reqprot, unsigned long prot,

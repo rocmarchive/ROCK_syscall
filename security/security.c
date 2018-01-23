@@ -828,10 +828,11 @@ void security_file_free(struct file *file)
 	call_void_hook(file_free_security, file);
 }
 
-int security_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+int security_file_ioctl(struct task_struct *tsk, struct file *file, unsigned int cmd, unsigned long arg)
 {
-	return call_int_hook(file_ioctl, 0, file, cmd, arg);
+	return call_int_hook(file_ioctl, 0, tsk, file, cmd, arg);
 }
+EXPORT_SYMBOL_GPL(security_file_ioctl);
 
 static inline unsigned long mmap_prot(struct file *file, unsigned long prot)
 {

@@ -3460,11 +3460,15 @@ out:
 	return rc;
 }
 
-static int selinux_file_ioctl(struct file *file, unsigned int cmd,
-			      unsigned long arg)
+static int selinux_file_ioctl(struct task_struct *tsk, struct file *file,
+			      unsigned int cmd, unsigned long arg)
 {
-	const struct cred *cred = current_cred();
+	const struct cred *cred;
 	int error = 0;
+
+	rcu_read_lock();
+       	cred = get_cred(__task_cred(tsk));
+	rcu_read_unlock();
 
 	switch (cmd) {
 	case FIONREAD:
@@ -3504,6 +3508,7 @@ static int selinux_file_ioctl(struct file *file, unsigned int cmd,
 	default:
 		error = ioctl_has_perm(cred, file, FILE__IOCTL, (u16) cmd);
 	}
+	put_cred(cred);
 	return error;
 }
 

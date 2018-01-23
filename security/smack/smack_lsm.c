@@ -1640,8 +1640,8 @@ static void smack_file_free_security(struct file *file)
  *
  * Returns 0 if allowed, error code otherwise
  */
-static int smack_file_ioctl(struct file *file, unsigned int cmd,
-			    unsigned long arg)
+static int smack_file_ioctl(struct task_struct *tsk, struct file *file,
+                            unsigned int cmd, unsigned long arg)
 {
 	int rc = 0;
 	struct smk_audit_info ad;

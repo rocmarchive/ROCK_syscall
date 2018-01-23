@@ -687,8 +687,8 @@ static int tomoyo_update_path_number_acl(const u8 perm,
  *
  * Returns 0 on success, negative value otherwise.
  */
-int tomoyo_path_number_perm(const u8 type, const struct path *path,
-			    unsigned long number)
+int tomoyo_path_number_perm(struct task_struct *tsk, const u8 type,
+                            const struct path *path, unsigned long number)
 {
 	struct tomoyo_request_info r;
 	struct tomoyo_obj_info obj = {
