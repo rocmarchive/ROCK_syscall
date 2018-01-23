@@ -2953,6 +2953,8 @@ extern int __generic_block_fiemap(struct inode *inode,
 extern int generic_block_fiemap(struct inode *inode,
 				struct fiemap_extent_info *fieinfo, u64 start,
 				u64 len, get_block_t *get_block);
+extern int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+                        unsigned long arg);
 
 extern void get_filesystem(struct file_system_type *fs);
 extern void put_filesystem(struct file_system_type *fs);

@@ -172,8 +172,6 @@ extern const struct dentry_operations ns_dentry_operations;
 /*
  * fs/ioctl.c
  */
-extern int do_vfs_ioctl(struct file *file, unsigned int fd, unsigned int cmd,
-		    unsigned long arg);
 extern long vfs_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 
 /*

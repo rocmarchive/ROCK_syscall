@@ -687,6 +687,7 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
 	}
 	return error;
 }
+EXPORT_SYMBOL_GPL(do_vfs_ioctl);
 
 SYSCALL_DEFINE3(ioctl, unsigned int, fd, unsigned int, cmd, unsigned long, arg)
 {
